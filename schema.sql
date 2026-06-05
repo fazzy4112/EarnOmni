@@ -207,3 +207,42 @@ select * from (values
   ('Web3 Game Trailer', 'Play to earn revolution', 'https://www.youtube.com/embed/dQw4w9WgXcQ', null, 30, 50)
 ) as v
 where not exists (select 1 from public.ads limit 1);
+-- ============================================================
+-- 8. ADMIN POLICIES
+-- A security-definer helper avoids recursive RLS lookups on profiles.
+-- ============================================================
+create or replace function public.is_admin(uid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select is_admin from public.profiles where id = uid), false);
+$$;
+
+grant execute on function public.is_admin(uuid) to authenticated;
+
+-- Admins can read & update everything
+drop policy if exists "admins read all profiles" on public.profiles;
+create policy "admins read all profiles" on public.profiles
+  for select to authenticated using (public.is_admin(auth.uid()));
+
+drop policy if exists "admins update all profiles" on public.profiles;
+create policy "admins update all profiles" on public.profiles
+  for update to authenticated using (public.is_admin(auth.uid()));
+
+drop policy if exists "admins read all withdrawals" on public.withdrawals;
+create policy "admins read all withdrawals" on public.withdrawals
+  for select to authenticated using (public.is_admin(auth.uid()));
+
+drop policy if exists "admins update withdrawals" on public.withdrawals;
+create policy "admins update withdrawals" on public.withdrawals
+  for update to authenticated using (public.is_admin(auth.uid()));
+
+grant update on public.withdrawals to authenticated;
+
+drop policy if exists "admins manage ads" on public.ads;
+create policy "admins manage ads" on public.ads
+  for all to authenticated using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
+
+grant insert, update, delete on public.ads to authenticated;
+
+drop policy if exists "admins read all ad_views" on public.ad_views;
+create policy "admins read all ad_views" on public.ad_views
+  for select to authenticated using (public.is_admin(auth.uid()));

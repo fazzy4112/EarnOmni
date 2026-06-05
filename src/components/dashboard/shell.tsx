@@ -14,6 +14,7 @@ import {
   X,
   Bell,
   Briefcase,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const items: NavItem[] = profile?.is_admin
+    ? [...navItems, { to: "/admin", label: "Admin Panel", icon: ShieldCheck }]
+    : navItems;
 
   const handleSignOut = async () => {
     await signOut();
@@ -51,7 +55,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       {/* Sidebar - desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border/50 bg-sidebar lg:flex">
-        <SidebarContent path={path} onSignOut={handleSignOut} />
+        <SidebarContent path={path} onSignOut={handleSignOut} items={items} />
       </aside>
 
       {/* Mobile sidebar */}
@@ -64,7 +68,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <SidebarContent path={path} onSignOut={handleSignOut} onNavigate={() => setOpen(false)} />
+            <SidebarContent path={path} onSignOut={handleSignOut} items={items} onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       )}
@@ -102,10 +106,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 function SidebarContent({
   path,
   onSignOut,
+  items,
   onNavigate,
 }: {
   path: string;
   onSignOut: () => void;
+  items: NavItem[];
   onNavigate?: () => void;
 }) {
   return (
@@ -117,7 +123,7 @@ function SidebarContent({
         <span className="font-bold tracking-tight">AdEarn</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = item.exact ? path === item.to : path.startsWith(item.to);
           return (
             <Link
