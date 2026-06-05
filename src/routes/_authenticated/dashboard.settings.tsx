@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,10 @@ function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [name, setName] = useState(profile?.full_name ?? "");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (profile?.full_name) setName(profile.full_name);
+  }, [profile?.full_name]);
 
   const save = async () => {
     if (!user) return;
