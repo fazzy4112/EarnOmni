@@ -18,7 +18,14 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+};
+
+const navItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/watch-ads", label: "Watch Ads", icon: PlayCircle },
   { to: "/dashboard/earnings", label: "My Earnings", icon: DollarSign },
@@ -27,7 +34,7 @@ const navItems = [
   { to: "/dashboard/tasks", label: "Investor Tasks", icon: Briefcase },
   { to: "/dashboard/withdraw", label: "Withdraw", icon: Wallet },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();
@@ -115,7 +122,7 @@ function SidebarContent({
           return (
             <Link
               key={item.to}
-              to={item.to}
+              to={item.to as string}
               onClick={onNavigate}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
                 active
