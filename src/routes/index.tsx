@@ -1,18 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  ArrowRight,
-  CheckCircle2,
-  Crown,
-  ShieldCheck,
-  Users,
-  Wallet,
-  Sparkles,
-  PlayCircle,
-  UserPlus,
-  Banknote,
+  ArrowRight, CheckCircle2, Crown, ShieldCheck,
+  Users, Wallet, Sparkles, PlayCircle, UserPlus,
+  Banknote, Loader2,
 } from "lucide-react";
 import heroImage from "@/assets/hero.jpg";
 
@@ -21,14 +16,25 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "AdEarn — Watch Ads, Earn Real Money in USDT" },
       { name: "description", content: "Join 10,000+ users earning real USDT by watching ads and completing simple tasks. Free to start." },
-      { property: "og:title", content: "AdEarn — Watch Ads, Earn Real Money" },
-      { property: "og:description", content: "Join 10,000+ users earning real USDT by watching ads and completing simple tasks." },
     ],
   }),
   component: Index,
 });
 
 function Index() {
+  // Load plans from DATABASE — auto updates when admin changes!
+  const { data: plans = [], isLoading: plansLoading } = useQuery({
+    queryKey: ["public_plans"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      return data ?? [];
+    },
+  });
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -54,12 +60,8 @@ function Index() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{
-            background:
-              "radial-gradient(60% 60% at 50% 0%, oklch(0.4 0.2 280 / 0.5), transparent 70%)",
-          }}
+        <div className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ background: "radial-gradient(60% 60% at 50% 0%, oklch(0.4 0.2 280 / 0.5), transparent 70%)" }}
         />
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-24 lg:grid-cols-2 lg:py-32">
           <div className="relative">
@@ -74,8 +76,7 @@ function Index() {
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-              Complete simple tasks, watch advertisements and withdraw your earnings
-              in USDT. No experience needed — just consistency.
+              Complete simple tasks, watch advertisements and withdraw your earnings in USDT. No experience needed — just consistency.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link to="/auth">
@@ -95,13 +96,8 @@ function Index() {
           </div>
           <div className="relative">
             <div className="absolute inset-0 -z-10 rounded-3xl bg-[image:var(--gradient-hero)] opacity-30 blur-3xl" />
-            <img
-              src={heroImage}
-              alt="AdEarn earning platform"
-              width={1536}
-              height={1024}
-              className="rounded-2xl border border-border/50 shadow-2xl"
-            />
+            <img src={heroImage} alt="AdEarn earning platform" width={1536} height={1024}
+              className="rounded-2xl border border-border/50 shadow-2xl" />
           </div>
         </div>
       </section>
@@ -117,7 +113,7 @@ function Index() {
             {[
               { icon: UserPlus, n: "01", title: "Create free account", desc: "Sign up in 30 seconds with email. No credit card required." },
               { icon: PlayCircle, n: "02", title: "Watch ads daily", desc: "Watch up to 10 ads per day and earn points for every view." },
-              { icon: Banknote, n: "03", title: "Withdraw earnings", desc: "Cash out your points as USDT directly to your wallet." },
+              { icon: Banknote, n: "03", title: "Withdraw earnings", desc: "Cash out your points as USDT directly to your BEP20 wallet." },
             ].map((s) => (
               <Card key={s.n} className="relative overflow-hidden border-border/50 bg-[image:var(--gradient-card)] p-8">
                 <span className="absolute right-6 top-6 text-5xl font-bold text-muted-foreground/10">{s.n}</span>
@@ -130,18 +126,77 @@ function Index() {
         </div>
       </section>
 
-      {/* Plans */}
+      {/* Plans — DYNAMIC from database */}
       <section id="plans" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold md:text-4xl">Subscription Plans</h2>
             <p className="mt-4 text-muted-foreground">Boost your earnings with a paid plan — cancel anytime.</p>
           </div>
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
-            <PlanCard name="Basic" price="$0" period="forever" perks={["10 ads/day", "1x earning", "Manual withdrawal"]} />
-            <PlanCard featured name="Silver" price="$10" period="/month" perks={["10 ads/day", "2x earning multiplier", "Priority support"]} />
-            <PlanCard name="Gold" price="$25" period="/month" perks={["10 ads/day", "4x earning multiplier", "Instant withdrawal"]} />
-          </div>
+
+          {plansLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="mt-16 grid gap-6 md:grid-cols-3">
+              {plans.map((plan: any) => (
+                <Card key={plan.id}
+                  className={`relative overflow-hidden border-border/50 p-8 transition-all ${
+                    plan.is_popular
+                      ? "bg-[image:var(--gradient-card)] ring-2 ring-primary shadow-[var(--shadow-glow)]"
+                      : "bg-card/50 hover:bg-card/80"
+                  }`}
+                >
+                  {/* Most Popular Badge */}
+                  {plan.is_popular && (
+                    <span className="absolute right-4 top-4 rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                      Most popular
+                    </span>
+                  )}
+
+                  {/* Gold Crown */}
+                  {plan.name === "gold" && (
+                    <Crown className="absolute left-4 top-4 h-5 w-5 text-yellow-400" />
+                  )}
+
+                  <h3 className="text-lg font-semibold mt-2">{plan.label}</h3>
+
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-bold">${plan.price_usd}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {plan.price_usd === 0 ? "/forever" : "/month"}
+                    </span>
+                  </div>
+
+                  {/* Multiplier badge */}
+                  <div className="mt-2">
+                    <span className="text-sm font-semibold text-emerald-400">
+                      {plan.multiplier}x earning multiplier
+                    </span>
+                  </div>
+
+                  <ul className="mt-6 space-y-3">
+                    {(plan.features ?? []).map((perk: string) => (
+                      <li key={perk} className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                        {perk}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link to="/auth">
+                    <Button
+                      className={`mt-8 w-full ${plan.is_popular ? "bg-[image:var(--gradient-hero)]" : ""}`}
+                      variant={plan.is_popular ? "default" : "outline"}
+                    >
+                      Get started
+                    </Button>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -155,7 +210,7 @@ function Index() {
             {[
               { icon: ShieldCheck, title: "Anti-fraud system", desc: "Smart detection blocks bots so real users get paid." },
               { icon: Users, title: "Referral rewards", desc: "Earn lifetime commission on every friend you invite." },
-              { icon: Wallet, title: "Crypto withdrawal", desc: "Withdraw to USDT on TRC20 or BEP20 networks." },
+              { icon: Wallet, title: "Crypto withdrawal", desc: "Withdraw to USDT on BEP20 (BNB Smart Chain) network." },
               { icon: Crown, title: "Investor tasks", desc: "Premium tasks from verified advertisers pay even more." },
             ].map((f) => (
               <Card key={f.title} className="border-border/50 bg-card/50 p-6">
@@ -204,50 +259,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-2xl font-bold md:text-3xl">{value}</div>
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
-  );
-}
-
-function PlanCard({
-  name,
-  price,
-  period,
-  perks,
-  featured,
-}: {
-  name: string;
-  price: string;
-  period: string;
-  perks: string[];
-  featured?: boolean;
-}) {
-  return (
-    <Card
-      className={`relative overflow-hidden border-border/50 p-8 ${
-        featured ? "bg-[image:var(--gradient-card)] ring-2 ring-primary shadow-[var(--shadow-glow)]" : "bg-card/50"
-      }`}
-    >
-      {featured && (
-        <span className="absolute right-4 top-4 rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary">
-          Most popular
-        </span>
-      )}
-      <h3 className="text-lg font-semibold">{name}</h3>
-      <div className="mt-4 flex items-baseline gap-1">
-        <span className="text-4xl font-bold">{price}</span>
-        <span className="text-sm text-muted-foreground">{period}</span>
-      </div>
-      <ul className="mt-6 space-y-3">
-        {perks.map((p) => (
-          <li key={p} className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-primary" /> {p}
-          </li>
-        ))}
-      </ul>
-      <Link to="/auth">
-        <Button className={`mt-8 w-full ${featured ? "bg-[image:var(--gradient-hero)]" : ""}`} variant={featured ? "default" : "outline"}>
-          Get started
-        </Button>
-      </Link>
-    </Card>
   );
 }

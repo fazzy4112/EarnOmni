@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
   { to: "/dashboard/earnings", label: "My Earnings", icon: DollarSign },
   { to: "/dashboard/referrals", label: "Referrals", icon: Users },
   { to: "/dashboard/subscription", label: "Plans", icon: Crown },
-  { to: "/dashboard/tasks", label: "Investor Tasks", icon: Briefcase },
+  { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
   { to: "/dashboard/withdraw", label: "Withdraw", icon: Wallet },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

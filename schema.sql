@@ -246,3 +246,125 @@ grant insert, update, delete on public.ads to authenticated;
 drop policy if exists "admins read all ad_views" on public.ad_views;
 create policy "admins read all ad_views" on public.ad_views
   for select to authenticated using (public.is_admin(auth.uid()));
+-- ============================================================
+-- FRAUD DETECTION SYSTEM TABLES
+-- ============================================================
+
+-- 1. DEVICE FINGERPRINTS
+create table if not exists public.device_fingerprints (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  ip_address inet,
+  user_agent text,
+  device_id text,
+  browser text,
+  os text,
+  country text default 'PK',
+  is_vpn boolean default false,
+  risk_level text default 'low',
+  first_seen timestamptz default now(),
+  last_seen timestamptz default now(),
+  device_risk_score integer default 0,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_device_fingerprints_user on public.device_fingerprints(user_id);
+create index if not exists idx_device_fingerprints_ip on public.device_fingerprints(ip_address);
+
+grant select, insert, update on public.device_fingerprints to authenticated;
+grant all on public.device_fingerprints to service_role;
+
+alter table public.device_fingerprints enable row level security;
+
+drop policy if exists "users can view own devices" on public.device_fingerprints;
+create policy "users can view own devices" on public.device_fingerprints
+  for select to authenticated using (auth.uid() = user_id);
+
+-- 2. TASK VERIFICATION LOGS
+create table if not exists public.task_verification_logs (
+  id uuid primary key default gen_random_uuid(),
+  task_completion_id uuid references public.task_completions(id) on delete cascade not null,
+  device_fingerprint_id uuid references public.device_fingerprints(id),
+  task_type text not null,
+  fraud_score integer default 0,
+  device_check boolean default true,
+  time_check boolean default true,
+  behavioral_check boolean default true,
+  ip_check boolean default true,
+  duplicate_check boolean default true,
+  verification_details jsonb,
+  flagged_reason text,
+  auto_approved boolean default false,
+  requires_manual_review boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_verification_logs_task on public.task_verification_logs(task_completion_id);
+create index if not exists idx_verification_logs_fraud_score on public.task_verification_logs(fraud_score);
+
+grant select, insert on public.task_verification_logs to authenticated;
+grant all on public.task_verification_logs to service_role;
+
+alter table public.task_verification_logs enable row level security;
+
+drop policy if exists "users can view own verification logs" on public.task_verification_logs;
+create policy "users can view own verification logs" on public.task_verification_logs
+  for select to authenticated using (
+    exists (
+      select 1 from public.task_completions tc
+      where tc.id = task_completion_id and tc.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "admin_can_view_all_verification_logs" on public.task_verification_logs;
+create policy "admin_can_view_all_verification_logs" on public.task_verification_logs
+  for select to authenticated using (public.is_admin(auth.uid()));
+
+-- 3. FRAUD RULES
+create table if not exists public.fraud_rules (
+  id uuid primary key default gen_random_uuid(),
+  rule_name text unique not null,
+  task_type text,
+  rule_type text not null,
+  condition_json jsonb,
+  risk_weight integer default 10,
+  enabled boolean default true,
+  description text,
+  created_at timestamptz default now()
+);
+
+grant select on public.fraud_rules to authenticated;
+grant all on public.fraud_rules to service_role;
+
+insert into public.fraud_rules (rule_name, task_type, rule_type, condition_json, risk_weight, description)
+values
+  ('Same IP Multiple Users', 'all', 'device', '{"check": "ip_multiple_users"}', 30, 'Same IP from different accounts'),
+  ('VPN/Proxy Detected', 'all', 'device', '{"check": "vpn_detected"}', 25, 'User using VPN or proxy'),
+  ('Task Too Fast', 'all', 'time', '{"check": "completion_time", "threshold": 5}', 20, 'Task completed in less than 5 seconds'),
+  ('Suspicious Device', 'all', 'device', '{"check": "new_device"}', 15, 'First time using this device'),
+  ('Duplicate Completion', 'all', 'duplicate', '{"check": "same_user_same_task"}', 40, 'User already completed this task'),
+  ('Bot-like Behavior', 'all', 'behavioral', '{"check": "rapid_submissions"}', 35, 'Multiple tasks submitted in short time'),
+  ('High Risk Country', 'all', 'device', '{"check": "high_risk_country"}', 15, 'Task from high-risk geography')
+on conflict (rule_name) do nothing;
+
+-- 4. USER TASK HISTORY
+create table if not exists public.user_task_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  task_id uuid references public.tasks(id) on delete cascade not null,
+  completed_count integer default 1,
+  last_completed timestamptz default now(),
+  avg_time_seconds integer,
+  device_changes integer default 0
+);
+
+create index if not exists idx_user_task_history on public.user_task_history(user_id, task_id);
+
+grant select, insert, update on public.user_task_history to authenticated;
+grant all on public.user_task_history to service_role;
+
+alter table public.user_task_history enable row level security;
+
+drop policy if exists "users can view own task history" on public.user_task_history;
+create policy "users can view own task history" on public.user_task_history
+  for select to authenticated using (auth.uid() = user_id);

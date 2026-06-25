@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Clock, PlayCircle, CheckCircle2, X } from "lucide-react";
+import { Clock, PlayCircle, CheckCircle2, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Ad {
   id: string;
   title: string;
   description: string | null;
+  ad_type: string;
   ad_url: string;
+  banner_image_url: string | null;
+  click_url: string | null;
   thumbnail_url: string | null;
   duration_seconds: number;
   reward_points: number;
@@ -28,22 +31,19 @@ function WatchAdsPage() {
   const qc = useQueryClient();
   const [activeAd, setActiveAd] = useState<Ad | null>(null);
   const [remaining, setRemaining] = useState(0);
+  const [videoStarted, setVideoStarted] = useState(false);
+  const [isTabActive, setIsTabActive] = useState(true);
+  const [tabWarning, setTabWarning] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: ads = [] } = useQuery({
     queryKey: ["ads"],
     queryFn: async () => {
-      let { data } = await supabase.from("ads").select("*").eq("is_active", true);
-      if (!data || data.length === 0) {
-        await supabase.from("ads").insert([
-          { title: "Crypto Wallet Promo", description: "Learn about secure crypto storage", ad_url: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration_seconds: 30, reward_points: 50, is_active: true },
-          { title: "NFT Marketplace", description: "Discover trending NFTs", ad_url: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration_seconds: 30, reward_points: 50, is_active: true },
-          { title: "DeFi Yield Farming", description: "Maximize your returns", ad_url: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration_seconds: 45, reward_points: 75, is_active: true },
-          { title: "Trading Bot Demo", description: "Automated trading explained", ad_url: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration_seconds: 30, reward_points: 50, is_active: true },
-          { title: "Web3 Game Trailer", description: "Play to earn revolution", ad_url: "https://www.youtube.com/embed/dQw4w9WgXcQ", duration_seconds: 30, reward_points: 50, is_active: true },
-        ]);
-        const reload = await supabase.from("ads").select("*").eq("is_active", true);
-        data = reload.data;
-      }
+      const { data } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("is_active", true);
       return (data ?? []) as Ad[];
     },
   });
@@ -67,37 +67,127 @@ function WatchAdsPage() {
   const completed = todayViews.length;
   const maxDaily = 10;
 
+  // Tab visibility detection
   useEffect(() => {
-    if (!activeAd) return;
-    setRemaining(activeAd.duration_seconds);
-    const id = setInterval(() => {
-      setRemaining((r) => (r > 0 ? r - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setIsTabActive(false);
+        setTabWarning(true);
+        toast.error("⚠️ Tab switch detected! Timer paused.", { duration: 3000 });
+      } else {
+        setIsTabActive(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  // Reset when new ad opens
+  useEffect(() => {
+    if (activeAd) {
+      setVideoStarted(false);
+      setIsTabActive(true);
+      setTabWarning(false);
+      setRemaining(activeAd.duration_seconds);
+      setVideoUrl(activeAd.ad_url);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
   }, [activeAd]);
 
+  // Timer
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!videoStarted || !isTabActive || remaining <= 0) return;
+    intervalRef.current = setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) { clearInterval(intervalRef.current!); return 0; }
+        return r - 1;
+      });
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [videoStarted, isTabActive]);
+
+  const handlePlayVideo = () => {
+    if (!activeAd) return;
+    const adType = activeAd.ad_type ?? "youtube";
+    if (adType === "youtube") {
+      setVideoUrl(`${activeAd.ad_url}?autoplay=1`);
+    } else {
+      setVideoUrl(activeAd.ad_url);
+    }
+    setVideoStarted(true);
+    setIsTabActive(true);
+    setTabWarning(false);
+  };
+
   const claim = async () => {
-    if (!activeAd || !user) return;
+    if (!activeAd || !user || remaining > 0) return;
     const multiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
     const pts = activeAd.reward_points * multiplier;
+
     const { error } = await supabase.from("ad_views").insert({
       user_id: user.id,
       ad_id: activeAd.id,
       points_earned: pts,
     });
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    // Update balance: 100 pts = $1
+    if (error) { toast.error(error.message); return; }
+
     const newPoints = (profile?.points ?? 0) + pts;
-    const newBalance = Number(profile?.balance ?? 0) + pts / 100;
-    await supabase.from("profiles").update({ points: newPoints, balance: newBalance }).eq("id", user.id);
-    toast.success(`+${pts} points earned!`);
+    const newBalance = Number(profile?.balance ?? 0) + pts / 1000;
+    await supabase.from("profiles")
+      .update({ points: newPoints, balance: newBalance })
+      .eq("id", user.id);
+
+    // Referral Commission
+    if (profile?.referred_by) {
+      const { data: referrer } = await supabase
+        .from("profiles")
+        .select("id, plan, balance, points, referral_code")
+        .eq("referral_code", profile.referred_by)
+        .single();
+      if (referrer) {
+        const { data: platformSettings } = await supabase
+          .from("platform_settings")
+          .select("referral_commission_basic, referral_commission_silver, referral_commission_gold")
+          .eq("id", 1)
+          .single();
+        const commissionPercent =
+          referrer.plan === "gold" ? (platformSettings?.referral_commission_gold ?? 20)
+          : referrer.plan === "silver" ? (platformSettings?.referral_commission_silver ?? 10)
+          : (platformSettings?.referral_commission_basic ?? 5);
+        const commissionPts = Math.round(pts * commissionPercent / 100);
+        if (commissionPts > 0) {
+          await supabase.from("profiles").update({
+            points: (referrer.points ?? 0) + commissionPts,
+            balance: Number(referrer.balance ?? 0) + commissionPts / 100,
+          }).eq("id", referrer.id);
+          await supabase.from("referrals").insert({
+            referrer_id: referrer.id,
+            referred_id: user.id,
+            commission_amount: commissionPts / 100,
+            commission_percent: commissionPercent,
+            source: "ad_earning",
+          });
+        }
+      }
+    }
+
+    toast.success(`🎉 +${pts} points earned!`);
     setActiveAd(null);
+    setVideoStarted(false);
     refreshProfile();
     qc.invalidateQueries({ queryKey: ["today_views"] });
     qc.invalidateQueries({ queryKey: ["ad_views"] });
+  };
+
+  const getAdTypeLabel = (type: string) => {
+    switch(type) {
+      case "banner": return "🖼️ Banner Ad";
+      case "video": return "📹 Video Ad";
+      case "link": return "🔗 Link Ad";
+      default: return "🎬 Video Ad";
+    }
   };
 
   return (
@@ -116,21 +206,25 @@ function WatchAdsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {ads.map((ad) => {
           const done = watchedSet.has(ad.id);
+          const adType = ad.ad_type ?? "youtube";
           return (
             <Card key={ad.id} className="overflow-hidden border-border/50 bg-card/50">
-              <div className="relative aspect-video bg-[image:var(--gradient-hero)]">
+              <div className="relative aspect-video bg-[image:var(--gradient-hero)] flex items-center justify-center">
                 {ad.thumbnail_url ? (
-                  <img src={ad.thumbnail_url} alt={ad.title} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={ad.thumbnail_url} alt={ad.title} className="h-full w-full object-cover" />
+                ) : adType === "banner" && ad.banner_image_url ? (
+                  <img src={ad.banner_image_url} alt={ad.title} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="grid h-full w-full place-items-center">
-                    <PlayCircle className="h-16 w-16 text-primary-foreground/80" />
-                  </div>
+                  <PlayCircle className="h-16 w-16 text-primary-foreground/80" />
                 )}
                 {done && (
                   <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-1 text-xs font-medium text-white">
                     <CheckCircle2 className="h-3 w-3" /> Done
                   </div>
                 )}
+                <div className="absolute left-3 top-3 text-xs bg-black/60 text-white px-2 py-0.5 rounded-full">
+                  {getAdTypeLabel(adType)}
+                </div>
               </div>
               <div className="p-4">
                 <h3 className="font-semibold">{ad.title}</h3>
@@ -154,9 +248,10 @@ function WatchAdsPage() {
         })}
       </div>
 
+      {/* Ad Overlay */}
       {activeAd && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4">
-          <div className="flex items-center justify-between text-white">
+          <div className="flex items-center justify-between text-white mb-4">
             <h3 className="text-lg font-semibold">{activeAd.title}</h3>
             {remaining === 0 && (
               <Button variant="ghost" size="icon" onClick={() => setActiveAd(null)}>
@@ -164,30 +259,114 @@ function WatchAdsPage() {
               </Button>
             )}
           </div>
-          <div className="relative mx-auto mt-4 w-full max-w-4xl flex-1">
-            <iframe
-              src={activeAd.ad_url}
-              title={activeAd.title}
-              className="h-full w-full rounded-lg"
-              allow="autoplay; encrypted-media"
-            />
-            <div className="absolute right-4 top-4 rounded-full bg-black/70 px-4 py-2 text-white">
-              {remaining > 0 ? (
-                <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> {remaining}s</span>
-              ) : (
-                <span className="text-emerald-400">Ready!</span>
-              )}
+
+          {tabWarning && videoStarted && (
+            <div className="mb-3 flex items-center gap-2 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-2 text-red-400 text-sm">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>Tab switch detected! Timer was paused.</span>
+              <button onClick={() => setTabWarning(false)} className="ml-auto">✕</button>
             </div>
+          )}
+
+          <div className="relative mx-auto w-full max-w-4xl flex-1">
+            {!videoStarted ? (
+              <div className="h-full w-full rounded-lg bg-gray-900 flex flex-col items-center justify-center gap-6">
+                <div className="text-center text-white space-y-2">
+                  <p className="text-gray-400 text-sm">Press play to start watching</p>
+                  <h4 className="text-xl font-bold">{activeAd.title}</h4>
+                  <p className="text-gray-400 text-sm">{activeAd.description}</p>
+                </div>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="flex items-center gap-1 bg-white/10 text-white px-3 py-1 rounded-full">
+                      <Clock className="h-4 w-4" /> {activeAd.duration_seconds}s
+                    </span>
+                    <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">
+                      +{activeAd.reward_points} pts
+                    </span>
+                  </div>
+                  <Button size="lg" onClick={handlePlayVideo}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 text-lg rounded-full">
+                    <PlayCircle className="h-6 w-6 mr-2" />
+                    {activeAd.ad_type === "banner" ? "View Banner & Start Timer" : "Play Video & Start Timer"}
+                  </Button>
+                  <div className="text-center text-gray-500 text-xs space-y-1">
+                    <p>⚠️ Do not switch tabs — timer will pause</p>
+                    <p>⚠️ Must watch full duration to claim reward</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="relative h-full w-full">
+
+                {/* YouTube / Link iframe */}
+                {(activeAd.ad_type === "youtube" || activeAd.ad_type === "link" || !activeAd.ad_type) && (
+                  <iframe
+                    src={videoUrl}
+                    title={activeAd.title}
+                    className="h-full w-full rounded-lg"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
+                )}
+
+                {/* Direct MP4 Video */}
+                {activeAd.ad_type === "video" && (
+                  <video
+                    src={activeAd.ad_url}
+                    className="h-full w-full rounded-lg object-contain bg-black"
+                    autoPlay
+                    controls={false}
+                  />
+                )}
+
+                {/* Banner Image Ad */}
+                {activeAd.ad_type === "banner" && (
+                  <div className="h-full w-full rounded-lg bg-gray-900 flex flex-col items-center justify-center gap-4 p-6">
+                    <p className="text-xs text-gray-400">Advertisement</p>
+                    <a href={activeAd.click_url ?? "#"} target="_blank" rel="noopener noreferrer"
+                      className="block max-w-2xl w-full">
+                      <img src={activeAd.banner_image_url ?? ""} alt={activeAd.title}
+                        className="w-full rounded-lg border border-white/10 hover:opacity-90 transition-opacity" />
+                    </a>
+                    <p className="text-xs text-gray-400">Click banner to visit advertiser — timer completes automatically</p>
+                  </div>
+                )}
+
+                {/* Timer */}
+                <div className={`absolute right-4 top-4 rounded-full px-4 py-2 text-white font-semibold ${!isTabActive ? "bg-red-600/90" : "bg-black/70"}`}>
+                  {remaining > 0 ? (
+                    <span className="flex items-center gap-2">
+                      <Clock className={`h-4 w-4 ${isTabActive ? "text-emerald-400" : "text-red-400"}`} />
+                      {remaining}s
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400">✓ Ready!</span>
+                  )}
+                </div>
+
+                {/* Tab inactive overlay */}
+                {!isTabActive && (
+                  <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg">
+                    <AlertTriangle className="h-12 w-12 text-yellow-400 mb-3" />
+                    <p className="text-white text-xl font-bold">Timer Paused!</p>
+                    <p className="text-gray-300 text-sm mt-1">You switched tabs. Come back to continue.</p>
+                    <p className="text-yellow-400 text-sm mt-2 font-semibold">{remaining}s remaining</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="mt-4 flex justify-center">
-            <Button
-              size="lg"
-              disabled={remaining > 0}
-              onClick={claim}
-              className="bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]"
-            >
-              {remaining > 0 ? `Wait ${remaining}s...` : `Claim +${activeAd.reward_points} points`}
-            </Button>
+            {!videoStarted ? (
+              <Button variant="ghost" onClick={() => setActiveAd(null)} className="text-gray-400">Cancel</Button>
+            ) : (
+              <Button size="lg" disabled={remaining > 0} onClick={claim}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg disabled:opacity-50">
+                {remaining > 0 ? `⏳ Wait ${remaining}s...` : "🎉 Claim Points!"}
+              </Button>
+            )}
           </div>
         </div>
       )}
