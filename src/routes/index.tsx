@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import {
   ArrowRight, CheckCircle2, Crown, ShieldCheck,
   Users, Wallet, PlayCircle, UserPlus,
-  Banknote, Loader2,
+  Banknote, Loader2, Menu, X,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import heroImage from "@/assets/hero.jpg";
@@ -15,14 +16,16 @@ import heroImage from "@/assets/hero.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "EarnOmni — Watch Ads, Earn Real Money in USDT" },
-      { name: "description", content: "Join 10,000+ users earning real USDT by watching ads and completing simple tasks. Free to start." },
+      { title: "EarnOmni — Complete Tasks & Earn Real Money in USDT" },
+      { name: "description", content: "Join 10,000+ users earning real USDT by completing simple online tasks — watch ads, refer friends, and cash out fast. Free to start, no experience needed." },
     ],
   }),
   component: Index,
 });
 
 function Index() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Load plans from DATABASE — auto updates when admin changes!
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ["public_plans"],
@@ -52,11 +55,34 @@ function Index() {
             <a href="#plans" className="text-sm text-muted-foreground hover:text-foreground">Plans</a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</a>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
             <Link to="/auth"><Button variant="ghost" size="sm">Sign in</Button></Link>
             <Link to="/auth"><Button size="sm" className="bg-[image:var(--gradient-hero)]">Start free</Button></Link>
           </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="grid h-9 w-9 place-items-center rounded-lg border border-border/50 text-foreground md:hidden"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
+        {mobileMenuOpen && (
+          <nav className="flex flex-col gap-1 border-t border-border/40 bg-background px-6 py-4 md:hidden">
+            <a href="#how" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">How it works</a>
+            <a href="#plans" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Plans</a>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Features</a>
+            <div className="mt-2 flex flex-col gap-2 border-t border-border/40 pt-3">
+              <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="outline" size="sm" className="w-full">Sign in</Button>
+              </Link>
+              <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                <Button size="sm" className="w-full bg-[image:var(--gradient-hero)]">Start free</Button>
+              </Link>
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* Hero */}
@@ -71,13 +97,13 @@ function Index() {
               Live payouts — over $50,000 distributed
             </div>
             <h1 className="text-5xl font-bold leading-tight tracking-tight md:text-6xl">
-              Watch Ads,{" "}
+              Complete Simple Tasks,{" "}
               <span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">
                 Earn Real Money
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
-              Complete simple tasks, watch advertisements and withdraw your earnings in USDT. No experience needed — just consistency.
+              Watch ads, refer friends, and complete daily tasks — then withdraw your earnings in USDT. No experience needed — just consistency.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link to="/auth">
