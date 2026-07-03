@@ -37,10 +37,6 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div style={{ padding: 20, background: "yellow", color: "#000" }}>
-        <p>DIAGNOSTIC TEST INPUT (home page):</p>
-        <input type="text" placeholder="click me and type" style={{ border: "1px solid #000", padding: 8 }} />
-      </div>
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
