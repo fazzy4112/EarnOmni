@@ -51,6 +51,7 @@ function Index() {
             <span className="text-lg font-bold tracking-tight">EarnOmni</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground">How it works</a>
             <a href="#plans" className="text-sm text-muted-foreground hover:text-foreground">Plans</a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</a>
@@ -70,6 +71,7 @@ function Index() {
         </div>
         {mobileMenuOpen && (
           <nav className="flex flex-col gap-1 border-t border-border/40 bg-background px-6 py-4 md:hidden">
+            <Link to="/" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Home</Link>
             <a href="#how" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">How it works</a>
             <a href="#plans" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Plans</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Features</a>
