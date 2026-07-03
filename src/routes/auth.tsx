@@ -70,10 +70,6 @@ function AuthPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-60"
-        style={{ background: "radial-gradient(60% 60% at 50% 0%, oklch(0.4 0.2 280 / 0.5), transparent 70%)" }}
-      />
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-[image:var(--gradient-hero)]">
@@ -82,7 +78,7 @@ function AuthPage() {
           <span className="text-xl font-bold">AdEarn</span>
         </Link>
 
-        <Card className="border-border/50 bg-card/80 p-8 backdrop-blur-xl">
+        <Card className="border-border/50 bg-card p-8">
           <div className="mb-6 flex rounded-lg bg-muted p-1">
             <button
               type="button"
