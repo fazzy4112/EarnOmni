@@ -9,13 +9,13 @@ import {
   Wallet,
   Settings,
   LogOut,
-  Sparkles,
   Menu,
   X,
   Bell,
   Briefcase,
   ShieldCheck,
 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
@@ -118,9 +118,9 @@ function SidebarContent({
     <>
       <div className="flex h-16 items-center gap-2 border-b border-border/50 px-6">
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-[image:var(--gradient-hero)]">
-          <Sparkles className="h-4 w-4 text-primary-foreground" />
+          <Logo className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="font-bold tracking-tight">AdEarn</span>
+        <span className="font-bold tracking-tight">EarnOmni</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {items.map((item) => {

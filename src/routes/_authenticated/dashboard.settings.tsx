@@ -390,7 +390,7 @@ function SettingsPage() {
         <div className="mt-4 rounded-lg bg-blue-500/10 border border-blue-500/30 p-3">
           <p className="text-xs text-blue-300 flex items-start gap-2">
             <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            Your account is protected. Never share your password or referral code with anyone. AdEarn will never ask for your password.
+            Your account is protected. Never share your password or referral code with anyone. EarnOmni will never ask for your password.
           </p>
         </div>
       </Card>

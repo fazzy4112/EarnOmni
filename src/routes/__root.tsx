@@ -74,10 +74,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AdEarn — Watch Ads, Earn Real Money" },
+      { title: "EarnOmni — Watch Ads, Earn Real Money" },
       { name: "description", content: "Complete simple tasks, watch advertisements and withdraw your earnings in USDT." },
-      { name: "author", content: "AdEarn" },
-      { property: "og:title", content: "AdEarn — Watch Ads, Earn Real Money" },
+      { name: "author", content: "EarnOmni" },
+      { property: "og:title", content: "EarnOmni — Watch Ads, Earn Real Money" },
       { property: "og:description", content: "Complete simple tasks, watch advertisements and withdraw your earnings in USDT." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

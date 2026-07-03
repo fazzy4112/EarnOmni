@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
@@ -13,8 +14,8 @@ import { useEffect } from "react";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — AdEarn" },
-      { name: "description", content: "Sign in or create your free AdEarn account." },
+      { title: "Sign in — EarnOmni" },
+      { name: "description", content: "Sign in or create your free EarnOmni account." },
     ],
   }),
   component: AuthPage,
@@ -52,7 +53,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Welcome to AdEarn.");
+        toast.success("Account created! Welcome to EarnOmni.");
         navigate({ to: "/dashboard" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -77,9 +78,9 @@ function AuthPage() {
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2">
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-[image:var(--gradient-hero)]">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
+            <Logo className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold">AdEarn</span>
+          <span className="text-xl font-bold">EarnOmni</span>
         </Link>
 
         <Card className="border-border/50 bg-card/80 p-8 backdrop-blur-xl">

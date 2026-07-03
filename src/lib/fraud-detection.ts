@@ -1,5 +1,5 @@
 /**
- * AdEarn Fraud Detection System
+ * EarnOmni Fraud Detection System
  * Automated verification with 0-100 risk scoring
  * 
  * Score Breakdown:

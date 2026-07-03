@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ArrowRight, CheckCircle2, Crown, ShieldCheck,
-  Users, Wallet, Sparkles, PlayCircle, UserPlus,
+  Users, Wallet, PlayCircle, UserPlus,
   Banknote, Loader2,
 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AdEarn — Watch Ads, Earn Real Money in USDT" },
+      { title: "EarnOmni — Watch Ads, Earn Real Money in USDT" },
       { name: "description", content: "Join 10,000+ users earning real USDT by watching ads and completing simple tasks. Free to start." },
     ],
   }),
@@ -42,9 +43,9 @@ function Index() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+              <Logo className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight">AdEarn</span>
+            <span className="text-lg font-bold tracking-tight">EarnOmni</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground">How it works</a>
@@ -96,7 +97,7 @@ function Index() {
           </div>
           <div className="relative">
             <div className="absolute inset-0 -z-10 rounded-3xl bg-[image:var(--gradient-hero)] opacity-30 blur-3xl" />
-            <img src={heroImage} alt="AdEarn earning platform" width={1536} height={1024}
+            <img src={heroImage} alt="EarnOmni earning platform" width={1536} height={1024}
               className="rounded-2xl border border-border/50 shadow-2xl" />
           </div>
         </div>
@@ -239,8 +240,8 @@ function Index() {
       <footer className="border-t border-border/40 py-12">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span>© {new Date().getFullYear()} AdEarn. All rights reserved.</span>
+            <Logo className="h-4 w-4 text-primary" />
+            <span>© {new Date().getFullYear()} EarnOmni. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-foreground">Terms</a>
