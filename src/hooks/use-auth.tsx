@@ -36,8 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (uid: string) => {
     let { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
 
-    // If profile row is missing entirely, create one (covers cases where the
-    // auth trigger didn't run yet).
     if (!data) {
       const { data: u } = await supabase.auth.getUser();
       const meta = (u.user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -52,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const re = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
       data = re.data;
     } else {
-      // Backfill missing referral_code or full_name from auth metadata.
       const patch: Record<string, unknown> = {};
       if (!data.referral_code) patch.referral_code = generateReferralCode();
       if (!data.full_name) {
@@ -82,27 +79,10 @@ function generateReferralCode() {
 }
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(() => loadProfile(s.user.id), 0);
-      } else {
-        setProfile(null);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => sub.subscription.unsubscribe();
+    // TEMP DIAGNOSTIC: Supabase calls disabled to isolate hang cause.
+    setLoading(false);
+    console.log("DIAGNOSTIC MODE: Supabase auth disabled");
+    return () => {};
   }, []);
 
   const refreshProfile = async () => {
