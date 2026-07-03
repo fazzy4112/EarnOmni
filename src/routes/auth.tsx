@@ -112,13 +112,15 @@ function AuthPage() {
           <form onSubmit={submit} className="mt-6 space-y-4">
             {mode === "signup" && (
               <div>
-                <Label htmlFor="fullName">Full name</Label>
-                <Input
+                <label htmlFor="fullName" style={{ display: "block", marginBottom: 4 }}>Full name (plain test)</label>
+                <input
                   id="fullName"
+                  type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   placeholder="Jane Doe"
+                  style={{ border: "1px solid #666", padding: 8, width: "100%", color: "#000", background: "#fff" }}
                 />
               </div>
             )}
