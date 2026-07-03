@@ -7,6 +7,30 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        function showError(msg) {
+          var box = document.getElementById("__debug_error_box__");
+          if (!box) {
+            box = document.createElement("div");
+            box.id = "__debug_error_box__";
+            box.style.cssText =
+              "position:fixed;top:0;left:0;right:0;z-index:999999;background:#b91c1c;color:#fff;padding:12px;font:12px monospace;white-space:pre-wrap;max-height:50vh;overflow:auto;";
+            document.body.appendChild(box);
+          }
+          var line = document.createElement("div");
+          line.style.cssText = "border-top:1px solid rgba(255,255,255,0.3);padding-top:8px;margin-top:8px;";
+          line.textContent = msg;
+          box.appendChild(line);
+        }
+        window.addEventListener("error", function (e) {
+          showError("ERROR: " + (e.message || "") + "\n" + (e.filename || "") + ":" + (e.lineno || "") + "\n" + (e.error && e.error.stack ? e.error.stack : ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          showError("UNHANDLED PROMISE REJECTION: " + (e.reason && e.reason.stack ? e.reason.stack : e.reason));
+        });
+      })();
+    </script>
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
