@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, MailCheck } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,10 +30,19 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [pendingConfirmEmail, setPendingConfirmEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (user) navigate({ to: "/dashboard" });
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,7 +50,7 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const redirectUrl = `${window.location.origin}/dashboard`;
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -53,8 +62,15 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Welcome to EarnOmni.");
-        navigate({ to: "/dashboard" });
+        if (data.session) {
+          // Email confirmation is disabled on this project — user is signed in right away.
+          toast.success("Account created! Welcome to EarnOmni.");
+          navigate({ to: "/dashboard" });
+        } else {
+          // Email confirmation required — nothing to sign in to yet.
+          setPendingConfirmEmail(email);
+          setResendCooldown(45);
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -66,6 +82,26 @@ function AuthPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    if (!pendingConfirmEmail || resendCooldown > 0) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: pendingConfirmEmail,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast.success("Confirmation email resent.");
+      setResendCooldown(45);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Couldn't resend email";
+      toast.error(msg);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -84,6 +120,40 @@ function AuthPage() {
         </Link>
 
         <Card className="border-border/50 bg-card/80 p-8 backdrop-blur-xl">
+          {pendingConfirmEmail ? (
+            <div className="text-center">
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-[image:var(--gradient-hero)]">
+                <MailCheck className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <h1 className="text-2xl font-bold">Confirm your email</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We've sent a confirmation link to{" "}
+                <span className="font-medium text-foreground">{pendingConfirmEmail}</span>.
+                Open it to activate your account — then come back and sign in.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resending || resendCooldown > 0}
+                onClick={resendConfirmation}
+                className="mt-6 w-full"
+              >
+                {resending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {resendCooldown > 0 ? `Resend email (${resendCooldown}s)` : "Resend confirmation email"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingConfirmEmail(null);
+                  setMode("signup");
+                }}
+                className="mt-4 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Wrong email? Go back and edit it
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="mb-6 flex rounded-lg bg-muted p-1">
             <button
               type="button"
@@ -173,6 +243,8 @@ function AuthPage() {
               {mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
+            </>
+          )}
         </Card>
 
         <Link to="/" className="mt-6 text-center text-xs text-muted-foreground hover:text-foreground">
