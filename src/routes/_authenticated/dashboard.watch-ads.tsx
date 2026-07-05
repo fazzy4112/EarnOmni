@@ -34,8 +34,11 @@ function WatchAdsPage() {
   const [videoStarted, setVideoStarted] = useState(false);
   const [isTabActive, setIsTabActive] = useState(true);
   const [tabWarning, setTabWarning] = useState(false);
+  const [pauseReason, setPauseReason] = useState<"tab_switch" | "ad_closed" | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const adWindowRef = useRef<Window | null>(null);
+  const adWindowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: ads = [] } = useQuery({
     queryKey: ["ads"],
@@ -76,6 +79,7 @@ function WatchAdsPage() {
       if (document.hidden) {
         setIsTabActive(false);
         setTabWarning(true);
+        setPauseReason("tab_switch");
         toast.error("⚠️ Tab switch detected! Timer paused.", { duration: 3000 });
       } else {
         setIsTabActive(true);
@@ -91,10 +95,13 @@ function WatchAdsPage() {
       setVideoStarted(false);
       setIsTabActive(true);
       setTabWarning(false);
+      setPauseReason(null);
       setRemaining(activeAd.duration_seconds);
       setVideoUrl(activeAd.ad_url);
+      adWindowRef.current = null;
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current);
     }
   }, [activeAd]);
 
@@ -124,6 +131,34 @@ function WatchAdsPage() {
     return () => { document.title = "EarnOmni"; };
   }, [remaining, videoStarted]);
 
+  // For Direct Link ads, watch the opened window: if it's closed before
+  // the timer finishes, pause progress (the user can't just pop the ad
+  // open and immediately close it to skip watching).
+  useEffect(() => {
+    if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current);
+    if (!videoStarted || activeAd?.ad_type !== "link" || remaining <= 0) return;
+    adWindowCheckRef.current = setInterval(() => {
+      const win = adWindowRef.current;
+      if (win && win.closed) {
+        setIsTabActive(false);
+        setTabWarning(true);
+        setPauseReason("ad_closed");
+      }
+    }, 1000);
+    return () => { if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current); };
+  }, [videoStarted, activeAd, remaining]);
+
+  const openAdWindow = () => {
+    if (!activeAd) return;
+    const win = window.open(activeAd.ad_url, "_blank", "noreferrer");
+    adWindowRef.current = win;
+    if (isTabActive === false && pauseReason === "ad_closed") {
+      setIsTabActive(true);
+      setTabWarning(false);
+      setPauseReason(null);
+    }
+  };
+
   const handlePlayVideo = () => {
     if (!activeAd) return;
     const adType = activeAd.ad_type ?? "youtube";
@@ -133,13 +168,16 @@ function WatchAdsPage() {
       // Direct Link / Smartlink ads can't be iframed (most ad networks
       // block that). Open it in a real new tab and run our own timer —
       // switching to that tab is the expected flow here, not cheating.
-      window.open(activeAd.ad_url, "_blank", "noopener,noreferrer");
+      // (We deliberately don't use "noopener" here so we can detect if
+      // the user closes that tab early — see the polling effect above.)
+      openAdWindow();
     } else {
       setVideoUrl(activeAd.ad_url);
     }
     setVideoStarted(true);
     setIsTabActive(true);
     setTabWarning(false);
+    setPauseReason(null);
   };
 
   const claim = async () => {
@@ -254,7 +292,11 @@ function WatchAdsPage() {
           {tabWarning && videoStarted && (
             <div className="mb-3 flex items-center gap-2 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-2 text-red-400 text-sm">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span>Tab switch detected! Timer was paused.</span>
+              <span>
+                {pauseReason === "ad_closed"
+                  ? "Ad tab was closed early! Timer paused — reopen it to continue."
+                  : "Tab switch detected! Timer was paused."}
+              </span>
               <button onClick={() => setTabWarning(false)} className="ml-auto">✕</button>
             </div>
           )}
@@ -313,7 +355,7 @@ function WatchAdsPage() {
                     </div>
                     <Button
                       variant="outline"
-                      onClick={() => window.open(activeAd.ad_url, "_blank", "noopener,noreferrer")}
+                      onClick={openAdWindow}
                     >
                       Didn't open? Click to open again
                     </Button>
@@ -357,11 +399,20 @@ function WatchAdsPage() {
 
                 {/* Tab inactive overlay */}
                 {!isTabActive && (
-                  <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg">
-                    <AlertTriangle className="h-12 w-12 text-yellow-400 mb-3" />
+                  <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg gap-3">
+                    <AlertTriangle className="h-12 w-12 text-yellow-400 mb-1" />
                     <p className="text-white text-xl font-bold">Timer Paused!</p>
-                    <p className="text-gray-300 text-sm mt-1">You switched tabs. Come back to continue.</p>
-                    <p className="text-yellow-400 text-sm mt-2 font-semibold">{remaining}s remaining</p>
+                    <p className="text-gray-300 text-sm mt-1">
+                      {pauseReason === "ad_closed"
+                        ? "You closed the ad tab early. Reopen it to keep going."
+                        : "You switched tabs. Come back to continue."}
+                    </p>
+                    <p className="text-yellow-400 text-sm font-semibold">{remaining}s remaining</p>
+                    {pauseReason === "ad_closed" && (
+                      <Button size="sm" variant="outline" onClick={openAdWindow}>
+                        Reopen ad
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
