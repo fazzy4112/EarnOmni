@@ -18,6 +18,7 @@ import {
   Briefcase,
   ShieldCheck,
   Ticket,
+  CircleDollarSign,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { UserAvatar } from "@/components/dashboard/user-avatar";
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { to: "/dashboard/watch-ads", label: "Watch Ads", icon: PlayCircle },
   { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
   { to: "/dashboard/game", label: "$1 Game", icon: Ticket },
+  { to: "/dashboard/deposit", label: "Deposit", icon: CircleDollarSign },
   { to: "/dashboard/earnings", label: "My Earnings", icon: DollarSign },
   { to: "/dashboard/referrals", label: "Referrals", icon: Users },
   { to: "/dashboard/subscription", label: "Plans", icon: Crown },
@@ -57,12 +59,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     enabled: !!profile?.is_admin,
     refetchInterval: 30000,
     queryFn: async () => {
-      const [wd, subs, tasks] = await Promise.all([
+      const [wd, subs, tasks, deps] = await Promise.all([
         supabase.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("is_active", false),
         supabase.from("task_completions").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("deposits").select("id", { count: "exact", head: true }).eq("status", "pending"),
       ]);
-      return (wd.count ?? 0) + (subs.count ?? 0) + (tasks.count ?? 0);
+      return (wd.count ?? 0) + (subs.count ?? 0) + (tasks.count ?? 0) + (deps.count ?? 0);
     },
   });
 

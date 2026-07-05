@@ -24,6 +24,7 @@ import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardReferralsRouteImport } from './routes/_authenticated/dashboard.referrals'
 import { Route as AuthenticatedDashboardGameRouteImport } from './routes/_authenticated/dashboard.game'
 import { Route as AuthenticatedDashboardEarningsRouteImport } from './routes/_authenticated/dashboard.earnings'
+import { Route as AuthenticatedDashboardDepositRouteImport } from './routes/_authenticated/dashboard.deposit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -108,6 +109,12 @@ const AuthenticatedDashboardEarningsRoute =
     path: '/earnings',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardDepositRoute =
+  AuthenticatedDashboardDepositRouteImport.update({
+    id: '/deposit',
+    path: '/deposit',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/dashboard/deposit': typeof AuthenticatedDashboardDepositRoute
   '/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
   '/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
@@ -130,6 +138,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/dashboard/deposit': typeof AuthenticatedDashboardDepositRoute
   '/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
   '/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
@@ -148,6 +157,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/_authenticated/dashboard/deposit': typeof AuthenticatedDashboardDepositRoute
   '/_authenticated/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
   '/_authenticated/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/_authenticated/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/dashboard'
+    | '/dashboard/deposit'
     | '/dashboard/earnings'
     | '/dashboard/game'
     | '/dashboard/referrals'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/admin'
+    | '/dashboard/deposit'
     | '/dashboard/earnings'
     | '/dashboard/game'
     | '/dashboard/referrals'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/dashboard/deposit'
     | '/_authenticated/dashboard/earnings'
     | '/_authenticated/dashboard/game'
     | '/_authenticated/dashboard/referrals'
@@ -323,10 +336,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardEarningsRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/deposit': {
+      id: '/_authenticated/dashboard/deposit'
+      path: '/deposit'
+      fullPath: '/dashboard/deposit'
+      preLoaderRoute: typeof AuthenticatedDashboardDepositRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
   }
 }
 
 interface AuthenticatedDashboardRouteChildren {
+  AuthenticatedDashboardDepositRoute: typeof AuthenticatedDashboardDepositRoute
   AuthenticatedDashboardEarningsRoute: typeof AuthenticatedDashboardEarningsRoute
   AuthenticatedDashboardGameRoute: typeof AuthenticatedDashboardGameRoute
   AuthenticatedDashboardReferralsRoute: typeof AuthenticatedDashboardReferralsRoute
@@ -340,6 +361,7 @@ interface AuthenticatedDashboardRouteChildren {
 
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
+    AuthenticatedDashboardDepositRoute: AuthenticatedDashboardDepositRoute,
     AuthenticatedDashboardEarningsRoute: AuthenticatedDashboardEarningsRoute,
     AuthenticatedDashboardGameRoute: AuthenticatedDashboardGameRoute,
     AuthenticatedDashboardReferralsRoute: AuthenticatedDashboardReferralsRoute,

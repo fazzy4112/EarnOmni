@@ -13,14 +13,14 @@ import {
   DollarSign, Plus, Trash2, Edit2, Check, X,
   BarChart3, Settings, Info, Save, Crown, Star,
   CheckCircle2, ClipboardList, Briefcase, ExternalLink,
-  Ticket, Trophy,
+  Ticket, Trophy, CircleDollarSign,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPanel,
 });
 
-type Tab = "overview" | "users" | "withdrawals" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "settings";
+type Tab = "overview" | "users" | "withdrawals" | "deposits" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "settings";
 
 interface AdForm {
   title: string;
@@ -76,6 +76,7 @@ function AdminPanel() {
   const [creditAmount, setCreditAmount] = useState(10);
   const [crediting, setCrediting] = useState(false);
   const [userSearch, setUserSearch] = useState("");
+  const [deposits, setDeposits] = useState<any[]>([]);
 
   // Ad form
   const [showAdForm, setShowAdForm] = useState(false);
@@ -102,7 +103,7 @@ function AdminPanel() {
 
   const loadAll = async () => {
     setBusy(true);
-    const [u, w, a, p, s, st, tc, t, gr] = await Promise.all([
+    const [u, w, a, p, s, st, tc, t, gr, dep] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawals").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("ads").select("*").order("created_at", { ascending: false }),
@@ -112,6 +113,7 @@ function AdminPanel() {
       supabase.from("task_completions").select("*").order("completed_at", { ascending: false }),
       supabase.from("tasks").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),  // ✅ YE ADD KAR
       supabase.from("game_rounds").select("*").order("created_at", { ascending: false }),
+      supabase.from("deposits").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
     ]);
     setUsers(u.data ?? []);
     setWithdrawals(w.data ?? []);
@@ -120,6 +122,7 @@ function AdminPanel() {
     setPlans(p.data ?? []);
     setSubscriptions(s.data ?? []);
     setGameRounds(gr.data ?? []);
+    setDeposits(dep.data ?? []);
     const tcRaw = tc.data ?? [];
 const tcEnriched = await Promise.all(
   tcRaw.map(async (item: any) => {
@@ -458,10 +461,25 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
+  const approveDeposit = async (id: string) => {
+    const { error } = await supabase.rpc("admin_approve_deposit", { p_deposit_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deposit approved and credited!");
+    loadAll();
+  };
+
+  const rejectDeposit = async (id: string) => {
+    const { error } = await supabase.rpc("admin_reject_deposit", { p_deposit_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Deposit rejected.");
+    loadAll();
+  };
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "overview", label: "Overview", icon: BarChart3 },
     { key: "users", label: "Users", icon: Users },
     { key: "withdrawals", label: "Withdrawals", icon: Wallet },
+    { key: "deposits", label: "Deposits", icon: CircleDollarSign },
     { key: "ads", label: "Ads", icon: PlayCircle },
     { key: "plans", label: "Plans", icon: Crown },
     { key: "subscriptions", label: "Plan Requests", icon: Star },
@@ -641,6 +659,48 @@ setTaskCompletions(tcEnriched);
                   </tr>
                 ))}
                 {withdrawals.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No withdrawals yet</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* DEPOSITS */}
+      {tab === "deposits" && (
+        <Card className="overflow-hidden border-border/50 bg-card/80">
+          <div className="p-4 border-b border-border/40 flex items-center justify-between">
+            <h3 className="font-semibold">Deposit Requests</h3>
+            <span className="text-sm text-muted-foreground">
+              Pending: {deposits.filter((d) => d.status === "pending").length}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                <tr><th className="p-3">User</th><th className="p-3">Amount</th><th className="p-3">Tx Hash</th><th className="p-3">Network</th><th className="p-3">Date</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr>
+              </thead>
+              <tbody>
+                {deposits.map((d) => (
+                  <tr key={d.id} className="border-t border-border/40 hover:bg-muted/20">
+                    <td className="p-3 text-xs text-muted-foreground">
+                      {d.profiles?.full_name || d.profiles?.email} {d.profiles?.user_number && `(UID-${d.profiles.user_number})`}
+                    </td>
+                    <td className="p-3 font-bold text-emerald-400">${Number(d.amount_usd).toFixed(2)}</td>
+                    <td className="p-3 font-mono text-xs max-w-[160px] truncate">{d.tx_hash}</td>
+                    <td className="p-3 text-xs">{d.network}</td>
+                    <td className="p-3 text-xs">{new Date(d.created_at).toLocaleDateString()}</td>
+                    <td className="p-3"><Badge variant={d.status === "approved" ? "default" : d.status === "rejected" ? "destructive" : "secondary"}>{d.status}</Badge></td>
+                    <td className="p-3">
+                      {d.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-emerald-500" onClick={() => approveDeposit(d.id)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectDeposit(d.id)}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {deposits.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No deposits yet</td></tr>}
               </tbody>
             </table>
           </div>

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -254,7 +254,8 @@ function GamePage() {
         </div>
         {!canEnter && depositBalance < entryFee && (
           <p className="mt-3 text-sm text-warning">
-            You need at least ${entryFee.toFixed(2)} in your deposit balance to enter. Deposits are coming soon.
+            You need at least ${entryFee.toFixed(2)} in your deposit balance to enter.{" "}
+            <Link to="/dashboard/deposit" className="underline underline-offset-2">Make a deposit →</Link>
           </p>
         )}
       </Card>
