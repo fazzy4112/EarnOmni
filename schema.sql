@@ -368,3 +368,19 @@ alter table public.user_task_history enable row level security;
 drop policy if exists "users can view own task history" on public.user_task_history;
 create policy "users can view own task history" on public.user_task_history
   for select to authenticated using (auth.uid() = user_id);
+-- ============================================================
+-- FIX: admin insert/update on subscriptions was never granted.
+-- This silently broke "Approve" in Plan Requests and now the
+-- manual plan-change dropdown too. Run this once.
+-- ============================================================
+grant update on public.subscriptions to authenticated;
+
+drop policy if exists "admins insert any subscription" on public.subscriptions;
+create policy "admins insert any subscription" on public.subscriptions
+  for insert to authenticated
+  with check (public.is_admin(auth.uid()));
+
+drop policy if exists "admins update any subscription" on public.subscriptions;
+create policy "admins update any subscription" on public.subscriptions
+  for update to authenticated
+  using (public.is_admin(auth.uid()));
