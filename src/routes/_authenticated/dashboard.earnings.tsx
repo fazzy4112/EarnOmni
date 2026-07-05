@@ -83,7 +83,7 @@ function EarningsPage() {
       date: v.watched_at,
       source: "Ad view",
       points: v.points_earned,
-      usd: v.points_earned / 100,
+      usd: v.points_earned / 1000,
     })),
     ...taskEarnings.map((tc) => ({
       id: `task-${tc.id}`,
