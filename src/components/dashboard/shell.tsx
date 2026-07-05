@@ -35,11 +35,11 @@ type NavItem = {
 const navItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/watch-ads", label: "Watch Ads", icon: PlayCircle },
+  { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
+  { to: "/dashboard/game", label: "$1 Game", icon: Ticket },
   { to: "/dashboard/earnings", label: "My Earnings", icon: DollarSign },
   { to: "/dashboard/referrals", label: "Referrals", icon: Users },
   { to: "/dashboard/subscription", label: "Plans", icon: Crown },
-  { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
-  { to: "/dashboard/game", label: "$1 Game", icon: Ticket },
   { to: "/dashboard/withdraw", label: "Withdraw", icon: Wallet },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
