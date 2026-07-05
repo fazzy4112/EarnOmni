@@ -278,6 +278,31 @@ setTaskCompletions(tcEnriched);
     toast.success("Rejected!"); loadAll();
   };
 
+  // Manual plan change — for support/bug-fix cases, independent of the
+  // normal deposit-and-request flow. Deactivates any current active
+  // subscription and creates a fresh active one for the chosen plan.
+  const manualPlanChange = async (userId: string, planName: string) => {
+    if (!planName) return;
+    const plan = plans.find((p) => p.name === planName);
+    if (!plan) { toast.error("Plan not found"); return; }
+    await supabase.from("subscriptions").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
+    const endDate = plan.duration_days
+      ? new Date(Date.now() + plan.duration_days * 86400000).toISOString()
+      : null;
+    const { error } = await supabase.from("subscriptions").insert({
+      user_id: userId,
+      plan_name: plan.name,
+      multiplier: plan.multiplier,
+      price_usd: plan.price_usd,
+      is_active: true,
+      end_date: endDate,
+    });
+    if (error) { toast.error(error.message); return; }
+    await supabase.from("profiles").update({ plan: plan.name }).eq("id", userId);
+    toast.success(`Plan manually changed to ${plan.label || plan.name}`);
+    loadAll();
+  };
+
   // Task completion actions
   const approveTaskCompletion = async (tc: any) => {
     // Status update karo
@@ -472,7 +497,18 @@ setTaskCompletions(tcEnriched);
                   <tr key={u.id} className="border-t border-border/40 hover:bg-muted/20">
                     <td className="p-3 font-mono text-xs text-muted-foreground">UID-{u.user_number}</td>
                     <td className="p-3"><div className="font-medium">{u.full_name || "—"}</div><div className="text-xs text-muted-foreground">{u.email}</div></td>
-                    <td className="p-3"><Badge variant={u.plan === "gold" ? "default" : "outline"}>{u.plan}</Badge></td>
+                    <td className="p-3">
+                      <select
+                        value={u.plan}
+                        onChange={(e) => manualPlanChange(u.id, e.target.value)}
+                        className="rounded-md border border-border bg-input px-2 py-1 text-xs capitalize"
+                        title="Manually change this user's plan"
+                      >
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.name}>{p.label || p.name}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="p-3 font-semibold text-emerald-400">${Number(u.balance).toFixed(2)}</td>
                     <td className="p-3">{u.points}</td>
                     <td className="p-3"><Badge variant={u.is_active ? "default" : "destructive"}>{u.is_active ? "Active" : "Blocked"}</Badge></td>
