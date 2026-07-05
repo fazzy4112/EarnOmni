@@ -206,7 +206,7 @@ function AuthPage() {
               <Input
                 id="email"
                 type="email"
-                autoComplete="off"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -218,7 +218,7 @@ function AuthPage() {
               <Input
                 id="password"
                 type="password"
-                autoComplete="off"
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
