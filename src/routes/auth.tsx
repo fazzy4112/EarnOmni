@@ -12,6 +12,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    ref: typeof search.ref === "string" ? search.ref : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — EarnOmni" },
@@ -24,12 +27,13 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const { ref } = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup">(ref ? "signup" : "signin");
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  const [referralCode, setReferralCode] = useState(ref ? ref.toUpperCase() : "");
   const [pendingConfirmEmail, setPendingConfirmEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
