@@ -14,6 +14,7 @@ import {
   Bell,
   Briefcase,
   ShieldCheck,
+  Ticket,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { to: "/dashboard/referrals", label: "Referrals", icon: Users },
   { to: "/dashboard/subscription", label: "Plans", icon: Crown },
   { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
+  { to: "/dashboard/game", label: "$1 Game", icon: Ticket },
   { to: "/dashboard/withdraw", label: "Withdraw", icon: Wallet },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

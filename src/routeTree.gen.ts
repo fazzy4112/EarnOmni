@@ -22,6 +22,7 @@ import { Route as AuthenticatedDashboardTasksRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardSubscriptionRouteImport } from './routes/_authenticated/dashboard.subscription'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
 import { Route as AuthenticatedDashboardReferralsRouteImport } from './routes/_authenticated/dashboard.referrals'
+import { Route as AuthenticatedDashboardGameRouteImport } from './routes/_authenticated/dashboard.game'
 import { Route as AuthenticatedDashboardEarningsRouteImport } from './routes/_authenticated/dashboard.earnings'
 
 const AuthRoute = AuthRouteImport.update({
@@ -95,6 +96,12 @@ const AuthenticatedDashboardReferralsRoute =
     path: '/referrals',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardGameRoute =
+  AuthenticatedDashboardGameRouteImport.update({
+    id: '/game',
+    path: '/game',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedDashboardEarningsRoute =
   AuthenticatedDashboardEarningsRouteImport.update({
     id: '/earnings',
@@ -109,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
+  '/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/subscription': typeof AuthenticatedDashboardSubscriptionRoute
@@ -123,6 +131,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
+  '/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/subscription': typeof AuthenticatedDashboardSubscriptionRoute
@@ -140,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/dashboard/earnings': typeof AuthenticatedDashboardEarningsRoute
+  '/_authenticated/dashboard/game': typeof AuthenticatedDashboardGameRoute
   '/_authenticated/dashboard/referrals': typeof AuthenticatedDashboardReferralsRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/_authenticated/dashboard/subscription': typeof AuthenticatedDashboardSubscriptionRoute
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/earnings'
+    | '/dashboard/game'
     | '/dashboard/referrals'
     | '/dashboard/settings'
     | '/dashboard/subscription'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/dashboard/earnings'
+    | '/dashboard/game'
     | '/dashboard/referrals'
     | '/dashboard/settings'
     | '/dashboard/subscription'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/dashboard/earnings'
+    | '/_authenticated/dashboard/game'
     | '/_authenticated/dashboard/referrals'
     | '/_authenticated/dashboard/settings'
     | '/_authenticated/dashboard/subscription'
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardReferralsRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/game': {
+      id: '/_authenticated/dashboard/game'
+      path: '/game'
+      fullPath: '/dashboard/game'
+      preLoaderRoute: typeof AuthenticatedDashboardGameRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/dashboard/earnings': {
       id: '/_authenticated/dashboard/earnings'
       path: '/earnings'
@@ -308,6 +328,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardEarningsRoute: typeof AuthenticatedDashboardEarningsRoute
+  AuthenticatedDashboardGameRoute: typeof AuthenticatedDashboardGameRoute
   AuthenticatedDashboardReferralsRoute: typeof AuthenticatedDashboardReferralsRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
   AuthenticatedDashboardSubscriptionRoute: typeof AuthenticatedDashboardSubscriptionRoute
@@ -320,6 +341,7 @@ interface AuthenticatedDashboardRouteChildren {
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
     AuthenticatedDashboardEarningsRoute: AuthenticatedDashboardEarningsRoute,
+    AuthenticatedDashboardGameRoute: AuthenticatedDashboardGameRoute,
     AuthenticatedDashboardReferralsRoute: AuthenticatedDashboardReferralsRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
     AuthenticatedDashboardSubscriptionRoute:

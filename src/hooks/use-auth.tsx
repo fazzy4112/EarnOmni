@@ -7,6 +7,7 @@ export interface Profile {
   full_name: string | null;
   email: string | null;
   balance: number;
+  deposit_balance: number;
   points: number;
   referral_code: string | null;
   referred_by: string | null;

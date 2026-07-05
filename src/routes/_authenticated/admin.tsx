@@ -12,14 +12,15 @@ import {
   Loader2, ShieldAlert, Users, Wallet, PlayCircle,
   DollarSign, Plus, Trash2, Edit2, Check, X,
   BarChart3, Settings, Info, Save, Crown, Star,
-  CheckCircle2, ClipboardList, Briefcase, ExternalLink
+  CheckCircle2, ClipboardList, Briefcase, ExternalLink,
+  Ticket, Trophy,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPanel,
 });
 
-type Tab = "overview" | "users" | "withdrawals" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "settings";
+type Tab = "overview" | "users" | "withdrawals" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "settings";
 
 interface AdForm {
   title: string;
@@ -70,6 +71,10 @@ function AdminPanel() {
   const [busy, setBusy] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [gameRounds, setGameRounds] = useState<any[]>([]);
+  const [creditUserId, setCreditUserId] = useState("");
+  const [creditAmount, setCreditAmount] = useState(10);
+  const [crediting, setCrediting] = useState(false);
 
   // Ad form
   const [showAdForm, setShowAdForm] = useState(false);
@@ -96,7 +101,7 @@ function AdminPanel() {
 
   const loadAll = async () => {
     setBusy(true);
-    const [u, w, a, p, s, st, tc, t] = await Promise.all([
+    const [u, w, a, p, s, st, tc, t, gr] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawals").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("ads").select("*").order("created_at", { ascending: false }),
@@ -105,6 +110,7 @@ function AdminPanel() {
       supabase.from("platform_settings").select("*").eq("id", 1).single(),
       supabase.from("task_completions").select("*").order("completed_at", { ascending: false }),
       supabase.from("tasks").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),  // ✅ YE ADD KAR
+      supabase.from("game_rounds").select("*").order("created_at", { ascending: false }),
     ]);
     setUsers(u.data ?? []);
     setWithdrawals(w.data ?? []);
@@ -112,6 +118,7 @@ function AdminPanel() {
     setTasks(t.data ?? []);
     setPlans(p.data ?? []);
     setSubscriptions(s.data ?? []);
+    setGameRounds(gr.data ?? []);
     const tcRaw = tc.data ?? [];
 const tcEnriched = await Promise.all(
   tcRaw.map(async (item: any) => {
@@ -338,6 +345,19 @@ setTaskCompletions(tcEnriched);
     toast.success("✅ Settings saved!"); loadAll();
   };
 
+  const handleCreditDeposit = async () => {
+    if (!creditUserId || creditAmount <= 0) { toast.error("Pick a user and a valid amount"); return; }
+    setCrediting(true);
+    const { error } = await supabase.rpc("admin_credit_deposit_balance", {
+      p_user_id: creditUserId,
+      p_amount: creditAmount,
+    });
+    setCrediting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Credited $${creditAmount} test deposit balance`);
+    loadAll();
+  };
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "overview", label: "Overview", icon: BarChart3 },
     { key: "users", label: "Users", icon: Users },
@@ -347,6 +367,7 @@ setTaskCompletions(tcEnriched);
     { key: "subscriptions", label: "Plan Requests", icon: Star },
     { key: "task_reviews", label: "Task Reviews", icon: ClipboardList },
     { key: "tasks_management", label: "Manage Tasks", icon: Briefcase }, // ✅ YE ADD KAR
+    { key: "game", label: "$1 Game", icon: Ticket },
     { key: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -1002,6 +1023,101 @@ setTaskCompletions(tcEnriched);
                   <span className="font-semibold">{value}</span>
                 </div>
               ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* $1 GAME */}
+      {tab === "game" && (
+        <div className="space-y-4">
+          <Card className="border-yellow-500/40 bg-yellow-500/10 p-4">
+            <p className="flex items-center gap-2 text-sm font-medium text-yellow-500">
+              <Info className="h-4 w-4" /> Temporary testing tool
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Deposits aren't live yet. Use this to credit a user's deposit balance for testing the $1 Game.
+              Remove this once the real payment gateway is connected.
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Label>User</Label>
+                <select
+                  className="mt-1 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
+                  value={creditUserId}
+                  onChange={(e) => setCreditUserId(e.target.value)}
+                >
+                  <option value="">Select a user…</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.email} ({u.email})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Amount (USD)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(Number(e.target.value))}
+                  className="mt-1 w-32"
+                />
+              </div>
+              <Button onClick={handleCreditDeposit} disabled={crediting}>
+                {crediting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Credit balance
+              </Button>
+            </div>
+          </Card>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <Stat icon={Ticket} label="Total rounds" value={gameRounds.length} color="purple" />
+            <Stat
+              icon={DollarSign}
+              label="Total revenue"
+              value={`$${gameRounds.reduce((s, r) => s + Number(r.total_revenue || 0), 0).toFixed(2)}`}
+              color="green"
+            />
+            <Stat
+              icon={Trophy}
+              label="Total prizes paid"
+              value={`$${gameRounds.filter((r) => r.status === "completed").reduce((s, r) => s + Number(r.prize_amount || 0), 0).toFixed(2)}`}
+              color="orange"
+            />
+          </div>
+
+          <Card className="border-border/50 bg-card/80 p-4">
+            <h3 className="mb-3 font-semibold">Rounds history</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-muted-foreground">
+                    <th className="pb-2 pr-4">Round</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2 pr-4">Entries</th>
+                    <th className="pb-2 pr-4">Revenue</th>
+                    <th className="pb-2 pr-4">Prize</th>
+                    <th className="pb-2 pr-4">Ends</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gameRounds.map((r) => (
+                    <tr key={r.id} className="border-b border-border/30">
+                      <td className="py-2 pr-4">#{r.round_number}</td>
+                      <td className="py-2 pr-4 capitalize">{r.status}</td>
+                      <td className="py-2 pr-4">{r.total_entries}</td>
+                      <td className="py-2 pr-4">${Number(r.total_revenue).toFixed(2)}</td>
+                      <td className="py-2 pr-4">${Number(r.prize_amount).toFixed(2)}</td>
+                      <td className="py-2 pr-4 text-xs text-muted-foreground">
+                        {new Date(r.ends_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {gameRounds.length === 0 && (
+                    <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">No rounds yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </Card>
         </div>
