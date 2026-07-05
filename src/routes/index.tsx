@@ -8,9 +8,10 @@ import { Card } from "@/components/ui/card";
 import {
   ArrowRight, CheckCircle2, Crown, ShieldCheck,
   Users, Wallet, PlayCircle, UserPlus,
-  Banknote, Loader2, Menu, X,
+  Banknote, Loader2, Menu, X, ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { FAQS, faqJsonLd } from "@/lib/faqs";
 import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Load plans from DATABASE — auto updates when admin changes!
   const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -41,6 +43,11 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -55,6 +62,7 @@ function Index() {
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground">How it works</a>
             <a href="#plans" className="text-sm text-muted-foreground hover:text-foreground">Plans</a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</a>
+            <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</a>
             <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground">About</Link>
           </nav>
           <div className="hidden items-center gap-3 md:flex">
@@ -76,6 +84,7 @@ function Index() {
             <a href="#how" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">How it works</a>
             <a href="#plans" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Plans</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Features</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">FAQ</a>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">About</Link>
             <div className="mt-2 flex flex-col gap-2 border-t border-border/40 pt-3">
               <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
@@ -248,6 +257,35 @@ function Index() {
                 <f.icon className="h-8 w-8 text-accent" />
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="border-t border-border/40 py-24">
+        <div className="mx-auto max-w-3xl px-6">
+          <h2 className="text-center text-3xl font-bold md:text-4xl">Frequently asked questions</h2>
+          <div className="mt-10 space-y-3">
+            {FAQS.map((faq, i) => (
+              <Card key={faq.q} className="border-border/50 bg-card/50 p-0 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                  aria-expanded={openFaq === i}
+                >
+                  <span className="font-medium">{faq.q}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      openFaq === i ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-5 pb-5 text-sm text-muted-foreground">{faq.a}</div>
+                )}
               </Card>
             ))}
           </div>
