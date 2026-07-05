@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
+  Home,
   PlayCircle,
   DollarSign,
   Users,
@@ -33,6 +34,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/watch-ads", label: "Watch Ads", icon: PlayCircle },
   { to: "/dashboard/tasks", label: "Tasks & Earn", icon: Briefcase },
