@@ -17,6 +17,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { UserAvatar } from "@/components/dashboard/user-avatar";
 import { WinnerCelebrationModal } from "@/components/dashboard/winner-celebration-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -84,11 +85,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-sm font-medium text-muted-foreground">Welcome back</h1>
-              <p className="text-base font-semibold leading-tight">
-                {profile?.full_name || profile?.email?.split("@")[0] || "Earner"}
-              </p>
+            <div className="flex items-center gap-3">
+              <UserAvatar avatarUrl={profile?.avatar_url} fullName={profile?.full_name} className="h-10 w-10" />
+              <div>
+                <h1 className="text-sm font-medium text-muted-foreground">Welcome back</h1>
+                <p className="text-base font-semibold leading-tight">
+                  {profile?.full_name || profile?.email?.split("@")[0] || "Earner"}
+                </p>
+                {profile?.user_number && (
+                  <p className="text-xs text-muted-foreground">UID-{profile.user_number}</p>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">

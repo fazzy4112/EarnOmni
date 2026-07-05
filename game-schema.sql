@@ -235,3 +235,44 @@ grant execute on function public.admin_credit_deposit_balance(uuid, numeric) to 
 -- ============================================================
 alter table public.game_rounds
   add column if not exists winner_seen boolean not null default false;
+
+-- ============================================================
+-- 12. UNIQUE USER ID + AVATAR SUPPORT
+-- ============================================================
+
+-- Human-friendly unique ID number, auto-assigned on signup.
+-- Starts at 10001 so IDs always look like a clean 5-digit number.
+alter table public.profiles
+  add column if not exists user_number bigint generated always as identity (start with 10001);
+
+-- Profile picture — either an uploaded photo (Storage public URL) or
+-- one of the default preset avatars ('/avatars/male.svg' etc.)
+alter table public.profiles
+  add column if not exists avatar_url text;
+
+-- Storage bucket for uploaded profile photos (public read so avatars
+-- display without extra auth, but only the owner can upload/replace
+-- their own file).
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "avatar images are publicly accessible" on storage.objects;
+create policy "avatar images are publicly accessible"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+drop policy if exists "users upload own avatar" on storage.objects;
+create policy "users upload own avatar"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "users update own avatar" on storage.objects;
+create policy "users update own avatar"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "users delete own avatar" on storage.objects;
+create policy "users delete own avatar"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

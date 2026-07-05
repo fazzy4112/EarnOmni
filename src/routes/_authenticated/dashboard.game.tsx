@@ -89,7 +89,7 @@ function GamePage() {
       const winnerIds = rounds.map((r) => r.winner_user_id).filter(Boolean);
       const { data: winners } = await supabase
         .from("profiles")
-        .select("id, full_name, email")
+        .select("id, full_name, email, user_number")
         .in("id", winnerIds as string[]);
       return rounds.map((r) => ({
         ...r,
@@ -252,7 +252,12 @@ function GamePage() {
                   <Trophy className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{maskedName(r.winner?.full_name, r.winner?.email)}</p>
+                  <p className="text-sm font-medium">
+                    {maskedName(r.winner?.full_name, r.winner?.email)}
+                    {r.winner?.user_number && (
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">(UID-{r.winner.user_number})</span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Round #{r.round_number} · {r.total_entries} entries
                   </p>

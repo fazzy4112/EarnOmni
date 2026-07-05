@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   User, Lock, Shield, Copy, Eye, EyeOff,
-  CheckCircle2, AlertTriangle, Phone, Mail
+  CheckCircle2, AlertTriangle, Phone, Mail, Upload, ImageIcon
 } from "lucide-react";
+import { UserAvatar } from "@/components/dashboard/user-avatar";
 
 export const Route = createFileRoute("/_authenticated/dashboard/settings")({
   component: SettingsPage,
@@ -35,6 +36,47 @@ function SettingsPage() {
 
   // Email reset state
   const [sendingReset, setSendingReset] = useState(false);
+
+  // Avatar state
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    if (file.size > 3 * 1024 * 1024) { toast.error("Image must be under 3MB"); return; }
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: `${data.publicUrl}?t=${Date.now()}` })
+        .eq("id", user.id);
+      if (updateError) throw updateError;
+      toast.success("Profile picture updated!");
+      refreshProfile();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Couldn't upload image";
+      toast.error(msg);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const useDefaultAvatar = async (type: "male" | "female") => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: `/avatars/${type}.svg` })
+      .eq("id", user.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Default avatar set!");
+    refreshProfile();
+  };
 
   useEffect(() => {
     if (profile?.full_name) setName(profile.full_name);
@@ -118,19 +160,67 @@ function SettingsPage() {
       {/* Account Overview */}
       <Card className="border-border/50 bg-[image:var(--gradient-card)] p-5">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
-            {name?.[0]?.toUpperCase() ?? "U"}
-          </div>
+          <UserAvatar avatarUrl={profile?.avatar_url} fullName={name} className="h-16 w-16 text-2xl" />
           <div>
             <h2 className="text-xl font-bold">{name || "User"}</h2>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {profile?.user_number && (
+                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-mono">
+                  UID-{profile.user_number}
+                </span>
+              )}
               <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full capitalize">
                 {profile?.plan ?? "basic"} plan
               </span>
               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
                 ✅ Email Verified
               </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Profile Picture */}
+      <Card className="border-border/50 bg-card/80 p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <ImageIcon className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold">Profile Picture</h3>
+        </div>
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+          <UserAvatar avatarUrl={profile?.avatar_url} fullName={name} className="h-20 w-20 text-2xl" />
+          <div className="flex-1 space-y-3">
+            <div>
+              <input
+                type="file"
+                id="avatar-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAvatarUpload(file);
+                }}
+              />
+              <label htmlFor="avatar-upload">
+                <Button asChild variant="outline" disabled={uploadingAvatar} className="cursor-pointer">
+                  <span>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploadingAvatar ? "Uploading…" : "Upload photo"}
+                  </span>
+                </Button>
+              </label>
+              <p className="mt-1 text-xs text-muted-foreground">JPG or PNG, up to 3MB</p>
+            </div>
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">Or use a default avatar</p>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => useDefaultAvatar("male")} className="rounded-full ring-offset-2 ring-offset-background transition hover:ring-2 hover:ring-primary">
+                  <img src="/avatars/male.svg" alt="Default male avatar" className="h-12 w-12 rounded-full" />
+                </button>
+                <button type="button" onClick={() => useDefaultAvatar("female")} className="rounded-full ring-offset-2 ring-offset-background transition hover:ring-2 hover:ring-primary">
+                  <img src="/avatars/female.svg" alt="Default female avatar" className="h-12 w-12 rounded-full" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

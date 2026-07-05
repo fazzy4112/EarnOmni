@@ -75,6 +75,7 @@ function AdminPanel() {
   const [creditUserId, setCreditUserId] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const [crediting, setCrediting] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   // Ad form
   const [showAdForm, setShowAdForm] = useState(false);
@@ -441,15 +442,35 @@ setTaskCompletions(tcEnriched);
       {/* USERS */}
       {tab === "users" && (
         <Card className="overflow-hidden border-border/50 bg-card/80">
-          <div className="p-4 border-b border-border/40"><h3 className="font-semibold">All Users ({users.length})</h3></div>
+          <div className="p-4 border-b border-border/40 flex items-center justify-between gap-3 flex-wrap">
+            <h3 className="font-semibold">All Users ({users.length})</h3>
+            <Input
+              placeholder="Search by name, email, or UID…"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="p-3">Name / Email</th><th className="p-3">Plan</th><th className="p-3">Balance</th><th className="p-3">Points</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr>
+                <tr><th className="p-3">UID</th><th className="p-3">Name / Email</th><th className="p-3">Plan</th><th className="p-3">Balance</th><th className="p-3">Points</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {users
+                  .filter((u) => {
+                    const q = userSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      (u.full_name || "").toLowerCase().includes(q) ||
+                      (u.email || "").toLowerCase().includes(q) ||
+                      String(u.user_number || "").includes(q) ||
+                      `uid-${u.user_number}`.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((u) => (
                   <tr key={u.id} className="border-t border-border/40 hover:bg-muted/20">
+                    <td className="p-3 font-mono text-xs text-muted-foreground">UID-{u.user_number}</td>
                     <td className="p-3"><div className="font-medium">{u.full_name || "—"}</div><div className="text-xs text-muted-foreground">{u.email}</div></td>
                     <td className="p-3"><Badge variant={u.plan === "gold" ? "default" : "outline"}>{u.plan}</Badge></td>
                     <td className="p-3 font-semibold text-emerald-400">${Number(u.balance).toFixed(2)}</td>
@@ -1049,7 +1070,7 @@ setTaskCompletions(tcEnriched);
                 >
                   <option value="">Select a user…</option>
                   {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.full_name || u.email} ({u.email})</option>
+                    <option key={u.id} value={u.id}>UID-{u.user_number} — {u.full_name || u.email} ({u.email})</option>
                   ))}
                 </select>
               </div>

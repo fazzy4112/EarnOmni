@@ -15,6 +15,8 @@ export interface Profile {
   is_active: boolean;
   is_admin: boolean;
   created_at: string;
+  user_number: number;
+  avatar_url: string | null;
 }
 
 interface AuthContextValue {

@@ -21,7 +21,7 @@ export function LatestWinnerBanner() {
       if (!round?.winner_user_id) return null;
       const { data: winner } = await supabase
         .from("profiles")
-        .select("full_name, email")
+        .select("full_name, email, user_number")
         .eq("id", round.winner_user_id)
         .maybeSingle();
       return { round, winner };
@@ -39,7 +39,11 @@ export function LatestWinnerBanner() {
           <Trophy className="h-4 w-4 text-primary-foreground" />
         </div>
         <p className="text-sm">
-          <span className="font-semibold">{name}</span> just won{" "}
+          <span className="font-semibold">{name}</span>
+          {latest.winner?.user_number && (
+            <span className="ml-1 text-xs text-muted-foreground">(UID-{latest.winner.user_number})</span>
+          )}{" "}
+          just won{" "}
           <span className="font-semibold text-primary">${latest.round.prize_amount}</span> in the $1 Game (Round #{latest.round.round_number})!{" "}
           <Link to="/dashboard/game" className="underline underline-offset-2 hover:text-primary">
             Join the next round →
