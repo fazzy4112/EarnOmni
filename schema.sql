@@ -384,3 +384,11 @@ drop policy if exists "admins update any subscription" on public.subscriptions;
 create policy "admins update any subscription" on public.subscriptions
   for update to authenticated
   using (public.is_admin(auth.uid()));
+
+-- ============================================================
+-- FIX: task_completions never stored the actual points awarded
+-- (only applied live to profiles.points/balance), so earning
+-- history couldn't reconstruct historical task earnings accurately.
+-- ============================================================
+alter table public.task_completions
+  add column if not exists points_awarded numeric;

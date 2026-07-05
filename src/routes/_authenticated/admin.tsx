@@ -336,6 +336,8 @@ setTaskCompletions(tcEnriched);
         balance: newBalance,
       }).eq("id", tc.user_id);
 
+      await supabase.from("task_completions").update({ points_awarded: pts }).eq("id", tc.id);
+
       // Task completion count update
       await supabase.from("tasks").update({
         current_completions: (taskData.current_completions ?? 0) + 1,
