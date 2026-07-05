@@ -333,11 +333,18 @@ setTaskCompletions(tcEnriched);
     if (!planName) return;
     const plan = plans.find((p) => p.name === planName);
     if (!plan) { toast.error("Plan not found"); return; }
-    await supabase.from("subscriptions").update({ is_active: false }).eq("user_id", userId).eq("is_active", true);
+
+    const { error: deactivateError } = await supabase
+      .from("subscriptions")
+      .update({ is_active: false })
+      .eq("user_id", userId)
+      .eq("is_active", true);
+    if (deactivateError) { toast.error(`Deactivate step failed: ${deactivateError.message}`); return; }
+
     const endDate = plan.duration_days
       ? new Date(Date.now() + plan.duration_days * 86400000).toISOString()
       : null;
-    const { error } = await supabase.from("subscriptions").insert({
+    const { error: insertError } = await supabase.from("subscriptions").insert({
       user_id: userId,
       plan_name: plan.name,
       multiplier: plan.multiplier,
@@ -345,8 +352,19 @@ setTaskCompletions(tcEnriched);
       is_active: true,
       end_date: endDate,
     });
-    if (error) { toast.error(error.message); return; }
-    await supabase.from("profiles").update({ plan: plan.name }).eq("id", userId);
+    if (insertError) { toast.error(`Insert step failed: ${insertError.message}`); return; }
+
+    const { error: profileError, data: profileData } = await supabase
+      .from("profiles")
+      .update({ plan: plan.name })
+      .eq("id", userId)
+      .select();
+    if (profileError) { toast.error(`Profile update failed: ${profileError.message}`); return; }
+    if (!profileData || profileData.length === 0) {
+      toast.error("Profile update affected 0 rows — check RLS policy on profiles UPDATE.");
+      return;
+    }
+
     toast.success(`Plan manually changed to ${plan.label || plan.name}`);
     loadAll();
   };
