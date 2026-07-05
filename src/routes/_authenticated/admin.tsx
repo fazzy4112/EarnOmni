@@ -635,7 +635,7 @@ setTaskCompletions(tcEnriched);
                     <option value="youtube">🎬 YouTube Video</option>
                     <option value="video">📹 Direct Video (MP4 URL)</option>
                     <option value="banner">🖼️ Banner Image Ad</option>
-                    <option value="link">🔗 Link / iframe</option>
+                    <option value="link">🔗 Direct Link / Smartlink (opens in new tab)</option>
                   </select>
                 </div>
                 {adForm.ad_type === "youtube" && (
@@ -664,8 +664,11 @@ setTaskCompletions(tcEnriched);
                 )}
                 {adForm.ad_type === "link" && (
                   <div className="md:col-span-2">
-                    <Label>Ad URL / iframe src *</Label>
-                    <Input placeholder="https://ads.example.com/..." value={adForm.ad_url} onChange={(e) => setAdForm({ ...adForm, ad_url: e.target.value })} />
+                    <Label>Ad URL (Direct Link / Smartlink) *</Label>
+                    <Input placeholder="https://your-smartlink.effectivecpmnetwork.com/..." value={adForm.ad_url} onChange={(e) => setAdForm({ ...adForm, ad_url: e.target.value })} />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      💡 It's fine to paste the same Direct Link/Smartlink URL into several ad entries — networks like Adsterra are designed for that. Add a few with different titles to fill out the daily quota.
+                    </p>
                   </div>
                 )}
                 <div><Label>Description</Label><Input placeholder="Brief description" value={adForm.description} onChange={(e) => setAdForm({ ...adForm, description: e.target.value })} /></div>

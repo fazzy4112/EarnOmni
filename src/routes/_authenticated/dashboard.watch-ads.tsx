@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Clock, PlayCircle, CheckCircle2, X, AlertTriangle } from "lucide-react";
+import { Clock, PlayCircle, CheckCircle2, X, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface Ad {
@@ -70,6 +70,7 @@ function WatchAdsPage() {
   // Tab visibility detection
   useEffect(() => {
     const handleVisibility = () => {
+      if (activeAd?.ad_type === "link") return; // switching to view the opened ad is expected here
       if (document.hidden) {
         setIsTabActive(false);
         setTabWarning(true);
@@ -80,7 +81,7 @@ function WatchAdsPage() {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
+  }, [activeAd]);
 
   // Reset when new ad opens
   useEffect(() => {
@@ -113,6 +114,11 @@ function WatchAdsPage() {
     const adType = activeAd.ad_type ?? "youtube";
     if (adType === "youtube") {
       setVideoUrl(`${activeAd.ad_url}?autoplay=1`);
+    } else if (adType === "link") {
+      // Direct Link / Smartlink ads can't be iframed (most ad networks
+      // block that). Open it in a real new tab and run our own timer —
+      // switching to that tab is the expected flow here, not cheating.
+      window.open(activeAd.ad_url, "_blank", "noopener,noreferrer");
     } else {
       setVideoUrl(activeAd.ad_url);
     }
@@ -259,7 +265,7 @@ function WatchAdsPage() {
                   <Button size="lg" onClick={handlePlayVideo}
                     className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 text-lg rounded-full">
                     <PlayCircle className="h-6 w-6 mr-2" />
-                    {activeAd.ad_type === "banner" ? "View Banner & Start Timer" : "Play Video & Start Timer"}
+                    {activeAd.ad_type === "banner" ? "View Banner & Start Timer" : activeAd.ad_type === "link" ? "Open Ad & Start Timer" : "Play Video & Start Timer"}
                   </Button>
                   <div className="text-center text-gray-500 text-xs space-y-1">
                     <p>⚠️ Do not switch tabs — timer will pause</p>
@@ -270,8 +276,8 @@ function WatchAdsPage() {
             ) : (
               <div className="relative h-full w-full">
 
-                {/* YouTube / Link iframe */}
-                {(activeAd.ad_type === "youtube" || activeAd.ad_type === "link" || !activeAd.ad_type) && (
+                {/* YouTube iframe */}
+                {(activeAd.ad_type === "youtube" || !activeAd.ad_type) && (
                   <iframe
                     src={videoUrl}
                     title={activeAd.title}
@@ -279,6 +285,25 @@ function WatchAdsPage() {
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                   />
+                )}
+
+                {/* Direct Link / Smartlink — opened in a real new tab */}
+                {activeAd.ad_type === "link" && (
+                  <div className="h-full w-full rounded-lg bg-gray-900 flex flex-col items-center justify-center gap-4 p-6 text-center">
+                    <ExternalLink className="h-10 w-10 text-primary" />
+                    <div>
+                      <p className="text-lg font-semibold text-white">Ad opened in a new tab</p>
+                      <p className="mt-1 text-sm text-gray-400">
+                        Check out the offer, then come back to this tab — your timer is running here.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(activeAd.ad_url, "_blank", "noopener,noreferrer")}
+                    >
+                      Didn't open? Click to open again
+                    </Button>
+                  </div>
                 )}
 
                 {/* Direct MP4 Video */}
