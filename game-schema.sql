@@ -228,3 +228,10 @@ end;
 $$;
 
 grant execute on function public.admin_credit_deposit_balance(uuid, numeric) to authenticated;
+
+-- ============================================================
+-- 11. WINNER NOTIFICATIONS — track whether the winner has seen
+-- their own personal "you won!" popup yet (shown once).
+-- ============================================================
+alter table public.game_rounds
+  add column if not exists winner_seen boolean not null default false;

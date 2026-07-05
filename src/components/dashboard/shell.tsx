@@ -17,6 +17,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { WinnerCelebrationModal } from "@/components/dashboard/winner-celebration-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 
@@ -55,6 +56,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <WinnerCelebrationModal />
       {/* Sidebar - desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border/50 bg-sidebar lg:flex">
         <SidebarContent path={path} onSignOut={handleSignOut} items={items} />

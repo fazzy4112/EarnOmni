@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
+import { LatestWinnerBanner } from "@/components/dashboard/winner-banner";
 import { DollarSign, PlayCircle, Clock, Users } from "lucide-react";
 import {
   LineChart,
@@ -66,6 +67,8 @@ function DashboardHome() {
 
   return (
     <div className="space-y-8">
+      <LatestWinnerBanner />
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Earnings" value={`$${(profile?.balance ?? 0).toFixed(2)}`} icon={DollarSign} color="from-emerald-500 to-emerald-700" />
         <StatCard label="Today's Ads" value={`${todayCount}/10`} icon={PlayCircle} color="from-blue-500 to-blue-700" />
