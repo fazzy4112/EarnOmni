@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { FAQS, faqJsonLd } from "@/lib/faqs";
+import { usePopunderAd } from "@/hooks/use-popunder";
 import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
@@ -28,18 +29,8 @@ function Index() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Adsterra Popunder — passive site monetization on the home/landing
-  // page only. Not tied to the ad-watch reward system in any way; it
-  // doesn't count toward the daily ad quota or pay users.
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://pl30196373.effectivecpmnetwork.com/3b/fe/10/3bfe100f92e01abb1c430124b9c6616e.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
+  // Adsterra Popunder — passive site monetization on this page only.
+  usePopunderAd();
 
   // Load plans from DATABASE — auto updates when admin changes!
   const { data: plans = [], isLoading: plansLoading } = useQuery({

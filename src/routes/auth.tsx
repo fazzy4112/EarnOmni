@@ -9,6 +9,7 @@ import { Loader2, MailCheck } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { usePopunderAd } from "@/hooks/use-popunder";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/auth")({
@@ -28,6 +29,10 @@ function AuthPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { ref } = Route.useSearch();
+
+  // Adsterra Popunder — passive site monetization on this page only.
+  usePopunderAd();
+
   const [mode, setMode] = useState<"signin" | "signup">(ref ? "signup" : "signin");
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState("");
