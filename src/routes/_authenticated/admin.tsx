@@ -161,6 +161,10 @@ setTaskCompletions(tcEnriched);
 
   const totalBalance = users.reduce((s, u) => s + Number(u.balance ?? 0), 0);
   const pendingWd = withdrawals.filter((w) => w.status === "pending").length;
+  const referralCounts = users.reduce((acc: Record<string, number>, u) => {
+    if (u.referred_by) acc[u.referred_by] = (acc[u.referred_by] ?? 0) + 1;
+    return acc;
+  }, {});
   const pendingSubs = subscriptions.filter((s) => !s.is_active).length;
   const pendingTasks = taskCompletions.filter((tc) => tc.status === "pending").length;
   const activeAds = ads.filter((a) => a.is_active).length;
@@ -525,7 +529,7 @@ setTaskCompletions(tcEnriched);
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="p-3">UID</th><th className="p-3">Name / Email</th><th className="p-3">Plan</th><th className="p-3">Balance</th><th className="p-3">Points</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr>
+                <tr><th className="p-3">UID</th><th className="p-3">Name / Email</th><th className="p-3">Plan</th><th className="p-3">Referrals</th><th className="p-3">Balance</th><th className="p-3">Points</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr>
               </thead>
               <tbody>
                 {users
@@ -554,6 +558,11 @@ setTaskCompletions(tcEnriched);
                           <option key={p.id} value={p.name}>{p.label || p.name}</option>
                         ))}
                       </select>
+                    </td>
+                    <td className="p-3">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        <Users className="h-3 w-3" /> {referralCounts[u.referral_code] ?? 0}
+                      </span>
                     </td>
                     <td className="p-3 font-semibold text-emerald-400">${Number(u.balance).toFixed(2)}</td>
                     <td className="p-3">{u.points}</td>
