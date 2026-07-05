@@ -55,6 +55,7 @@ function Index() {
             <a href="#how" className="text-sm text-muted-foreground hover:text-foreground">How it works</a>
             <a href="#plans" className="text-sm text-muted-foreground hover:text-foreground">Plans</a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</a>
+            <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground">About</Link>
           </nav>
           <div className="hidden items-center gap-3 md:flex">
             <Link to="/auth"><Button variant="ghost" size="sm">Sign in</Button></Link>
@@ -75,6 +76,7 @@ function Index() {
             <a href="#how" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">How it works</a>
             <a href="#plans" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Plans</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Features</a>
+            <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">About</Link>
             <div className="mt-2 flex flex-col gap-2 border-t border-border/40 pt-3">
               <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="outline" size="sm" className="w-full">Sign in</Button>
@@ -269,9 +271,10 @@ function Index() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted-foreground md:flex-row">
           <div className="flex items-center gap-2">
             <Logo className="h-4 w-4 text-primary" />
-            <span>© {new Date().getFullYear()} EarnOmni. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} EarnOmni, a product of i5Digital Hub LLC. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
+            <Link to="/about" className="hover:text-foreground">About</Link>
             <a href="#" className="hover:text-foreground">Terms</a>
             <a href="#" className="hover:text-foreground">Privacy</a>
             <a href="#" className="hover:text-foreground">Contact</a>
