@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Ticket, Trophy, Clock, Users, Loader2, Sparkles } from "lucide-react";
+import { ShareWinButtons } from "@/components/dashboard/share-win-buttons";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard/game")({
@@ -94,6 +95,22 @@ function GamePage() {
         ...r,
         winner: winners?.find((w) => w.id === r.winner_user_id),
       }));
+    },
+  });
+
+  const { data: myLatestWin } = useQuery({
+    queryKey: ["game_my_latest_win", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("game_rounds")
+        .select("*")
+        .eq("status", "completed")
+        .eq("winner_user_id", user!.id)
+        .order("drawn_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
     },
   });
 
@@ -196,6 +213,25 @@ function GamePage() {
           </p>
         )}
       </Card>
+
+      {myLatestWin && (
+        <Card className="border-primary/40 bg-[image:var(--gradient-hero)]/10 p-6">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
+              <Trophy className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="font-semibold">
+                You won ${myLatestWin.prize_amount} in Round #{myLatestWin.round_number}! 🎉
+              </h2>
+              <p className="text-sm text-muted-foreground">Share your win with friends and followers.</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <ShareWinButtons prizeAmount={myLatestWin.prize_amount} referralCode={profile?.referral_code} />
+          </div>
+        </Card>
+      )}
 
       <Card className="border-border/50 bg-card/50 p-6">
         <h2 className="text-lg font-semibold">Past winners</h2>
