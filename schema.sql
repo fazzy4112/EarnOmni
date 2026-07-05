@@ -392,3 +392,36 @@ create policy "admins update any subscription" on public.subscriptions
 -- ============================================================
 alter table public.task_completions
   add column if not exists points_awarded numeric;
+
+-- ============================================================
+-- EMAIL CONFIRMATION TRACKING
+-- Profiles rows get created at signup time (before email
+-- confirmation), so we need a separate flag + trigger that syncs
+-- from auth.users.email_confirmed_at once the user actually
+-- confirms. This lets the admin panel and referral counts
+-- distinguish "signed up" from "signed up AND confirmed".
+-- ============================================================
+
+alter table public.profiles
+  add column if not exists email_confirmed boolean not null default false;
+
+-- Backfill existing users based on their current auth.users state.
+update public.profiles p
+set email_confirmed = true
+from auth.users u
+where p.id = u.id and u.email_confirmed_at is not null;
+
+create or replace function public.sync_email_confirmed()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.email_confirmed_at is not null and (old.email_confirmed_at is null) then
+    update public.profiles set email_confirmed = true where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_email_confirmed on auth.users;
+create trigger on_auth_user_email_confirmed
+  after update on auth.users
+  for each row execute function public.sync_email_confirmed();

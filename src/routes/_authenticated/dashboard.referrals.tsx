@@ -26,7 +26,7 @@ function ReferralsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("id, full_name, email, user_number, created_at")
+        .select("id, full_name, email, user_number, created_at, email_confirmed")
         .eq("referred_by", profile!.referral_code)
         .order("created_at", { ascending: false });
       return data ?? [];
@@ -76,7 +76,7 @@ function ReferralsPage() {
         <Card className="border-border/50 bg-[image:var(--gradient-card)] p-6">
           <Users className="h-6 w-6 text-primary" />
           <p className="mt-4 text-sm text-muted-foreground">Total referrals</p>
-          <p className="text-3xl font-bold">{referredUsers.length}</p>
+          <p className="text-3xl font-bold">{referredUsers.filter((r) => r.email_confirmed).length}</p>
         </Card>
         <Card className="border-border/50 bg-[image:var(--gradient-card)] p-6">
           <p className="text-sm text-muted-foreground">Lifetime commission</p>
@@ -131,7 +131,14 @@ function ReferralsPage() {
               className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 px-4 py-3"
             >
               <div>
-                <p className="text-sm font-medium">{r.full_name || r.email}</p>
+                <p className="text-sm font-medium">
+                  {r.full_name || r.email}
+                  {!r.email_confirmed && (
+                    <span className="ml-2 rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-normal text-yellow-500">
+                      Pending confirmation
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground">UID-{r.user_number}</p>
               </div>
               <p className="text-xs text-muted-foreground">

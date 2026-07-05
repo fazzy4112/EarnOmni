@@ -339,7 +339,7 @@ setTaskCompletions(tcEnriched);
       .update({ is_active: false })
       .eq("user_id", userId)
       .eq("is_active", true);
-    if (deactivateError) { toast.error(`Deactivate step failed: ${deactivateError.message}`); return; }
+    if (deactivateError) { toast.error(deactivateError.message); return; }
 
     const endDate = plan.duration_days
       ? new Date(Date.now() + plan.duration_days * 86400000).toISOString()
@@ -352,18 +352,14 @@ setTaskCompletions(tcEnriched);
       is_active: true,
       end_date: endDate,
     });
-    if (insertError) { toast.error(`Insert step failed: ${insertError.message}`); return; }
+    if (insertError) { toast.error(insertError.message); return; }
 
-    const { error: profileError, data: profileData } = await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
       .update({ plan: plan.name })
       .eq("id", userId)
       .select();
-    if (profileError) { toast.error(`Profile update failed: ${profileError.message}`); return; }
-    if (!profileData || profileData.length === 0) {
-      toast.error("Profile update affected 0 rows — check RLS policy on profiles UPDATE.");
-      return;
-    }
+    if (profileError) { toast.error(profileError.message); return; }
 
     toast.success(`Plan manually changed to ${plan.label || plan.name}`);
     loadAll();
@@ -584,7 +580,14 @@ setTaskCompletions(tcEnriched);
                     </td>
                     <td className="p-3 font-semibold text-emerald-400">${Number(u.balance).toFixed(2)}</td>
                     <td className="p-3">{u.points}</td>
-                    <td className="p-3"><Badge variant={u.is_active ? "default" : "destructive"}>{u.is_active ? "Active" : "Blocked"}</Badge></td>
+                    <td className="p-3">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant={u.is_active ? "default" : "destructive"}>{u.is_active ? "Active" : "Blocked"}</Badge>
+                        {!u.email_confirmed && (
+                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 w-fit">Email not confirmed</Badge>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-3">
                       {!u.is_admin && <Button size="sm" variant={u.is_active ? "destructive" : "outline"} onClick={() => toggleUserBlock(u.id, u.is_active)}>{u.is_active ? "Block" : "Unblock"}</Button>}
                       {u.is_admin && <Badge className="bg-purple-500">Admin</Badge>}

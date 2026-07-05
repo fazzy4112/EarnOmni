@@ -17,6 +17,7 @@ export interface Profile {
   created_at: string;
   user_number: number;
   avatar_url: string | null;
+  email_confirmed: boolean;
 }
 
 interface AuthContextValue {
