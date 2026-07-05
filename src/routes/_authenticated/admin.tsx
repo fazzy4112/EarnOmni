@@ -271,6 +271,50 @@ setTaskCompletions(tcEnriched);
   const activateSubscription = async (sub: any) => {
     await supabase.from("subscriptions").update({ is_active: true }).eq("id", sub.id);
     await supabase.from("profiles").update({ plan: sub.plan_name }).eq("id", sub.user_id);
+
+    // Referral commission — paid here because this is real revenue
+    // (a plan purchase), unlike everyday ad/task earnings which are a
+    // platform cost, not income to share.
+    const { data: referredProfile } = await supabase
+      .from("profiles")
+      .select("referred_by")
+      .eq("id", sub.user_id)
+      .single();
+
+    if (referredProfile?.referred_by) {
+      const { data: referrer } = await supabase
+        .from("profiles")
+        .select("id, plan, balance")
+        .eq("referral_code", referredProfile.referred_by)
+        .single();
+
+      if (referrer) {
+        const { data: platformSettings } = await supabase
+          .from("platform_settings")
+          .select("referral_commission_basic, referral_commission_silver, referral_commission_gold")
+          .eq("id", 1)
+          .single();
+        const commissionPercent =
+          referrer.plan === "gold" ? (platformSettings?.referral_commission_gold ?? 20)
+          : referrer.plan === "silver" ? (platformSettings?.referral_commission_silver ?? 10)
+          : (platformSettings?.referral_commission_basic ?? 5);
+        const commissionAmount = Number(((sub.price_usd ?? 0) * commissionPercent) / 100);
+
+        if (commissionAmount > 0) {
+          await supabase.from("profiles").update({
+            balance: Number(referrer.balance ?? 0) + commissionAmount,
+          }).eq("id", referrer.id);
+          await supabase.from("referrals").insert({
+            referrer_id: referrer.id,
+            referred_id: sub.user_id,
+            commission_amount: commissionAmount,
+            commission_percent: commissionPercent,
+            source: "plan_subscription",
+          });
+        }
+      }
+    }
+
     toast.success(`${sub.plan_name} plan activated!`); loadAll();
   };
   const rejectSubscription = async (sub: any) => {

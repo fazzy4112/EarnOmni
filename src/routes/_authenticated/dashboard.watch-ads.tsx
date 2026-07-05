@@ -139,39 +139,10 @@ function WatchAdsPage() {
       .update({ points: newPoints, balance: newBalance })
       .eq("id", user.id);
 
-    // Referral Commission
-    if (profile?.referred_by) {
-      const { data: referrer } = await supabase
-        .from("profiles")
-        .select("id, plan, balance, points, referral_code")
-        .eq("referral_code", profile.referred_by)
-        .single();
-      if (referrer) {
-        const { data: platformSettings } = await supabase
-          .from("platform_settings")
-          .select("referral_commission_basic, referral_commission_silver, referral_commission_gold")
-          .eq("id", 1)
-          .single();
-        const commissionPercent =
-          referrer.plan === "gold" ? (platformSettings?.referral_commission_gold ?? 20)
-          : referrer.plan === "silver" ? (platformSettings?.referral_commission_silver ?? 10)
-          : (platformSettings?.referral_commission_basic ?? 5);
-        const commissionPts = Math.round(pts * commissionPercent / 100);
-        if (commissionPts > 0) {
-          await supabase.from("profiles").update({
-            points: (referrer.points ?? 0) + commissionPts,
-            balance: Number(referrer.balance ?? 0) + commissionPts / 100,
-          }).eq("id", referrer.id);
-          await supabase.from("referrals").insert({
-            referrer_id: referrer.id,
-            referred_id: user.id,
-            commission_amount: commissionPts / 100,
-            commission_percent: commissionPercent,
-            source: "ad_earning",
-          });
-        }
-      }
-    }
+    // Note: referral commission is NOT paid on ad-watching earnings —
+    // watching ads is a platform expense, not revenue. Commission is
+    // only paid from a share of real revenue (plan subscriptions,
+    // deposits), credited when those events happen instead.
 
     toast.success(`🎉 +${pts} points earned!`);
     setActiveAd(null);

@@ -87,9 +87,13 @@ function ReferralsPage() {
       <Card className="border-border/50 bg-card/50 p-6">
         <h3 className="text-lg font-semibold">Your referral code</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Share this to earn <span className="font-semibold text-primary">{myCommissionPercent}%</span> commission
-          on every referral's earnings — your {profile?.plan ?? "basic"} plan's rate.
+          Share this link — as soon as someone joins, they'll show up in your referral count below.
         </p>
+        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
+          💰 <span className="font-medium text-foreground">{myCommissionPercent}% commission</span> (your {profile?.plan ?? "basic"} plan's rate)
+          is credited to your balance <span className="font-medium text-foreground">only when someone you referred subscribes to a paid plan or makes a deposit</span> —
+          not from their everyday activity like watching ads or completing tasks.
+        </div>
         <div className="mt-4 space-y-3">
           <div className="flex gap-2">
             <div className="flex-1 rounded-lg border border-border bg-input px-4 py-3 font-mono text-lg">

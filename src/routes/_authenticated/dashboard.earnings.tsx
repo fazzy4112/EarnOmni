@@ -102,7 +102,7 @@ function EarningsPage() {
     ...referralCommissions.map((r) => ({
       id: `ref-${r.id}`,
       date: r.created_at,
-      source: "Referral commission",
+      source: "Referral commission (from a referral's plan purchase)",
       points: null,
       usd: Number(r.commission_amount),
     })),
