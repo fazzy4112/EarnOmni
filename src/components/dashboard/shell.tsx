@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   PlayCircle,
@@ -27,6 +29,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
+  badge?: number;
 };
 
 const navItems: NavItem[] = [
@@ -46,8 +49,23 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+
+  const { data: adminPendingCount = 0 } = useQuery({
+    queryKey: ["admin_pending_count"],
+    enabled: !!profile?.is_admin,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const [wd, subs, tasks] = await Promise.all([
+        supabase.from("withdrawals").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("is_active", false),
+        supabase.from("task_completions").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      ]);
+      return (wd.count ?? 0) + (subs.count ?? 0) + (tasks.count ?? 0);
+    },
+  });
+
   const items: NavItem[] = profile?.is_admin
-    ? [...navItems, { to: "/admin", label: "Admin Panel", icon: ShieldCheck }]
+    ? [...navItems, { to: "/admin", label: "Admin Panel", icon: ShieldCheck, badge: adminPendingCount || undefined }]
     : navItems;
 
   const handleSignOut = async () => {
@@ -148,7 +166,12 @@ function SidebarContent({
               }`}
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {!!item.badge && (
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
