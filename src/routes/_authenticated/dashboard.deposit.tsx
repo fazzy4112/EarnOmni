@@ -73,7 +73,7 @@ function DepositPage() {
 
   const copyAddress = () => {
     if (!settings?.usdt_bep20_address) return;
-    navigator.clipboard.writeText(settings.deposit_wallet_address);
+    navigator.clipboard.writeText(settings.usdt_bep20_address);
     toast.success("Address copied!");
   };
 
@@ -124,7 +124,7 @@ function DepositPage() {
         {settings?.usdt_bep20_address ? (
           <div className="mt-4 flex gap-2">
             <div className="flex-1 truncate rounded-lg border border-border bg-input px-4 py-3 font-mono text-sm">
-              {settings.deposit_wallet_address}
+              {settings.usdt_bep20_address}
             </div>
             <Button onClick={copyAddress} variant="outline" size="lg">
               <Copy className="h-4 w-4" />

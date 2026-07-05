@@ -139,7 +139,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-4">
             <div className="hidden rounded-lg border border-border/50 bg-card/50 px-3 py-1.5 text-sm md:block">
               <span className="text-muted-foreground">Balance: </span>
-              <span className="font-bold text-primary">${(profile?.balance ?? 0).toFixed(2)}</span>
+              <span className="font-bold text-primary">
+                ${(Number(profile?.balance ?? 0) + Number(profile?.deposit_balance ?? 0)).toFixed(2)}
+              </span>
             </div>
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />
