@@ -29,7 +29,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
-  badge?: number;
+  badge?: number | string;
 };
 
 const navItems: NavItem[] = [
@@ -64,9 +64,24 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     },
   });
 
-  const items: NavItem[] = profile?.is_admin
+  const { data: gameEnabled = true } = useQuery({
+    queryKey: ["game_enabled_nav"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("game_enabled")
+        .eq("id", 1)
+        .single();
+      return data?.game_enabled ?? false;
+    },
+  });
+
+  const items: NavItem[] = (profile?.is_admin
     ? [...navItems, { to: "/admin", label: "Admin Panel", icon: ShieldCheck, badge: adminPendingCount || undefined }]
-    : navItems;
+    : navItems
+  ).map((item) =>
+    item.to === "/dashboard/game" && !gameEnabled ? { ...item, badge: "Soon" } : item
+  );
 
   const handleSignOut = async () => {
     await signOut();
@@ -168,7 +183,7 @@ function SidebarContent({
               <item.icon className="h-4 w-4" />
               <span className="flex-1">{item.label}</span>
               {!!item.badge && (
-                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white">
+                <span className={`rounded-full px-1.5 py-0.5 text-xs font-semibold text-white ${typeof item.badge === "string" ? "bg-blue-500" : "bg-red-500"}`}>
                   {item.badge}
                 </span>
               )}

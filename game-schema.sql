@@ -276,3 +276,103 @@ drop policy if exists "users delete own avatar" on storage.objects;
 create policy "users delete own avatar"
   on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ============================================================
+-- 13. GAME ON/OFF SWITCH — admin controls when the $1 Game goes
+-- live (e.g. wait until there are enough users for good odds).
+-- ============================================================
+alter table public.platform_settings
+  add column if not exists game_enabled boolean not null default false;
+
+-- Clean slate: remove test rounds/entries from development testing.
+-- Balances are untouched — only game_rounds/game_entries are cleared.
+delete from public.game_entries;
+delete from public.game_rounds;
+
+-- Round creation now respects the on/off switch — no round exists
+-- (and the page shows "Starting Soon") until admin turns it on.
+create or replace function public.ensure_open_game_round()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_enabled boolean;
+begin
+  select game_enabled into v_enabled from public.platform_settings where id = 1;
+  if not coalesce(v_enabled, false) then
+    return;
+  end if;
+  if not exists (select 1 from public.game_rounds where status = 'open') then
+    insert into public.game_rounds (starts_at, ends_at)
+    values (now(), now() + interval '14 days');
+  end if;
+end;
+$$;
+
+create or replace function public.enter_game_round()
+returns table(entries_created integer, round_id uuid) language plpgsql security definer set search_path = public as $$
+declare
+  v_round public.game_rounds%rowtype;
+  v_multiplier integer := 1;
+  v_fee numeric(12,2);
+  v_enabled boolean;
+  i integer;
+begin
+  select game_enabled into v_enabled from public.platform_settings where id = 1;
+  if not coalesce(v_enabled, false) then
+    raise exception 'The $1 Game is not live yet. Check back soon!';
+  end if;
+
+  perform public.ensure_open_game_round();
+
+  select * into v_round from public.game_rounds
+    where status = 'open' and ends_at > now()
+    order by starts_at desc limit 1
+    for update;
+
+  if v_round.id is null then
+    raise exception 'No open round available right now.';
+  end if;
+
+  v_fee := v_round.entry_fee;
+
+  perform 1 from public.profiles where id = auth.uid() for update;
+
+  if (select deposit_balance from public.profiles where id = auth.uid()) < v_fee then
+    raise exception 'Insufficient deposit balance. Please deposit funds first.';
+  end if;
+
+  update public.profiles set deposit_balance = deposit_balance - v_fee where id = auth.uid();
+
+  select coalesce(max(s.multiplier), 1) into v_multiplier
+    from public.subscriptions s
+    where s.user_id = auth.uid()
+      and s.is_active = true
+      and (s.end_date is null or s.end_date > now());
+
+  for i in 1..v_multiplier loop
+    insert into public.game_entries (round_id, user_id) values (v_round.id, auth.uid());
+  end loop;
+
+  update public.game_rounds
+    set total_entries = total_entries + v_multiplier,
+        total_revenue = total_revenue + v_fee
+    where id = v_round.id;
+
+  return query select v_multiplier, v_round.id;
+end;
+$$;
+
+-- Admin toggle for the game switch.
+create or replace function public.admin_set_game_enabled(p_enabled boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin(auth.uid()) then
+    raise exception 'Not authorized.';
+  end if;
+  update public.platform_settings set game_enabled = p_enabled where id = 1;
+  if p_enabled then
+    perform public.ensure_open_game_round();
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_set_game_enabled(boolean) to authenticated;

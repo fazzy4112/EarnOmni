@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Ticket, Trophy, Clock, Users, Loader2, Sparkles } from "lucide-react";
+import { Ticket, Trophy, Clock, Users, Loader2, Sparkles, Hourglass } from "lucide-react";
 import { ShareWinButtons } from "@/components/dashboard/share-win-buttons";
 import { toast } from "sonner";
 
@@ -32,9 +32,22 @@ function GamePage() {
   const { user, profile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
+  const { data: gameEnabled, isLoading: settingsLoading } = useQuery({
+    queryKey: ["game_enabled"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("game_enabled")
+        .eq("id", 1)
+        .single();
+      return data?.game_enabled ?? false;
+    },
+  });
+
   const { data: round, isLoading: roundLoading } = useQuery({
     queryKey: ["game_round_current"],
     refetchInterval: 15000,
+    enabled: !!gameEnabled,
     queryFn: async () => {
       const { data } = await supabase
         .from("game_rounds")
@@ -142,6 +155,38 @@ function GamePage() {
     if (email) return email.slice(0, 3) + "***";
     return "A lucky winner";
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!gameEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">$1 Game</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pay $1 for a chance to win a $100 prize.
+          </p>
+        </div>
+        <Card className="border-border/50 bg-[image:var(--gradient-card)] p-10 text-center">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
+            <Hourglass className="h-8 w-8 text-primary-foreground" />
+          </div>
+          <h2 className="mt-4 text-xl font-bold">Starting Soon 🚀</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            The $1 Game is almost here! We're waiting for more users to join
+            so everyone gets a fair shot at winning. Keep earning and check
+            back soon.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

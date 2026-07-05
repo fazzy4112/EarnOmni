@@ -448,6 +448,16 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
+  const [togglingGame, setTogglingGame] = useState(false);
+  const handleToggleGame = async () => {
+    setTogglingGame(true);
+    const { error } = await supabase.rpc("admin_set_game_enabled", { p_enabled: !settings?.game_enabled });
+    setTogglingGame(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(!settings?.game_enabled ? "$1 Game is now LIVE!" : "$1 Game paused.");
+    loadAll();
+  };
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "overview", label: "Overview", icon: BarChart3 },
     { key: "users", label: "Users", icon: Users },
@@ -1167,6 +1177,28 @@ setTaskCompletions(tcEnriched);
       {/* $1 GAME */}
       {tab === "game" && (
         <div className="space-y-4">
+          <Card className={`p-4 ${settings?.game_enabled ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/50 bg-card/80"}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 font-medium">
+                  <Ticket className="h-4 w-4" />
+                  $1 Game status: <span className={settings?.game_enabled ? "text-emerald-400" : "text-muted-foreground"}>
+                    {settings?.game_enabled ? "🟢 LIVE" : "⏸️ Paused (Starting Soon)"}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {settings?.game_enabled
+                    ? "Users can see and enter the game right now."
+                    : "Users see a \"Starting Soon\" message instead of the game. Turn this on once you have enough users."}
+                </p>
+              </div>
+              <Button onClick={handleToggleGame} disabled={togglingGame} variant={settings?.game_enabled ? "destructive" : "default"}>
+                {togglingGame && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {settings?.game_enabled ? "Pause Game" : "Start Game"}
+              </Button>
+            </div>
+          </Card>
+
           <Card className="border-yellow-500/40 bg-yellow-500/10 p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-yellow-500">
               <Info className="h-4 w-4" /> Temporary testing tool
