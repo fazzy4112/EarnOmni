@@ -66,6 +66,8 @@ function WatchAdsPage() {
   const watchedSet = useMemo(() => new Set(todayViews), [todayViews]);
   const completed = todayViews.length;
   const maxDaily = 10;
+  const multiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
+  const displayPoints = (base: number) => base * multiplier;
 
   // Tab visibility detection
   useEffect(() => {
@@ -109,6 +111,19 @@ function WatchAdsPage() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [videoStarted, isTabActive]);
 
+  // Reflect the countdown in the browser tab title, so it stays visible
+  // in the tab bar even after opening a Direct Link ad in a new tab.
+  useEffect(() => {
+    if (videoStarted && remaining > 0) {
+      document.title = `⏳ ${remaining}s left — EarnOmni`;
+    } else if (videoStarted && remaining === 0) {
+      document.title = "✅ Ready to claim! — EarnOmni";
+    } else {
+      document.title = "EarnOmni";
+    }
+    return () => { document.title = "EarnOmni"; };
+  }, [remaining, videoStarted]);
+
   const handlePlayVideo = () => {
     if (!activeAd) return;
     const adType = activeAd.ad_type ?? "youtube";
@@ -129,7 +144,6 @@ function WatchAdsPage() {
 
   const claim = async () => {
     if (!activeAd || !user || remaining > 0) return;
-    const multiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
     const pts = activeAd.reward_points * multiplier;
 
     const { error } = await supabase.from("ad_views").insert({
@@ -210,7 +224,7 @@ function WatchAdsPage() {
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" /> {ad.duration_seconds}s
                   </span>
-                  <span className="font-semibold text-primary">+{ad.reward_points} pts</span>
+                  <span className="font-semibold text-primary">+{displayPoints(ad.reward_points)} pts</span>
                 </div>
                 <Button
                   className="mt-4 w-full bg-[image:var(--gradient-hero)]"
@@ -259,7 +273,7 @@ function WatchAdsPage() {
                       <Clock className="h-4 w-4" /> {activeAd.duration_seconds}s
                     </span>
                     <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">
-                      +{activeAd.reward_points} pts
+                      +{displayPoints(activeAd.reward_points)} pts
                     </span>
                   </div>
                   <Button size="lg" onClick={handlePlayVideo}
