@@ -26,7 +26,7 @@ function TasksPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [completing, setCompleting] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"tasks" | "submit">("tasks");
+  const [activeTab, setActiveTab] = useState<"offerwall" | "tasks" | "submit">("offerwall");
   const [submitting, setSubmitting] = useState(false);
   const [submitForm, setSubmitForm] = useState({
     title: "", description: "", task_url: "",
@@ -214,7 +214,11 @@ function TasksPage() {
         </Card>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setActiveTab("offerwall")}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "offerwall" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
+          🎁 Offers
+        </button>
         <button onClick={() => setActiveTab("tasks")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "tasks" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
           📋 Available Tasks
@@ -224,6 +228,18 @@ function TasksPage() {
           📤 Submit Task
         </button>
       </div>
+
+      {activeTab === "offerwall" && (
+        <Card className="border-border/50 bg-card/80 overflow-hidden p-0">
+          <iframe
+            sandbox="allow-popups allow-same-origin allow-scripts allow-forms allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox"
+            referrerPolicy="no-referrer"
+            src={`https://www.mobtrk.link/wall/8mQ7M?subid=${user?.id ?? ""}`}
+            style={{ width: "100%", height: "690px", border: "none" }}
+            title="EarnOmni Offerwall"
+          />
+        </Card>
+      )}
 
       {activeTab === "tasks" && (
         <div className="space-y-4">
