@@ -13,14 +13,14 @@ import {
   DollarSign, Plus, Trash2, Edit2, Check, X,
   BarChart3, Settings, Info, Save, Crown, Star,
   CheckCircle2, ClipboardList, Briefcase, ExternalLink,
-  Ticket, Trophy, CircleDollarSign,
+  Ticket, Trophy, CircleDollarSign, MessageSquare,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPanel,
 });
 
-type Tab = "overview" | "users" | "withdrawals" | "deposits" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "settings";
+type Tab = "overview" | "users" | "withdrawals" | "deposits" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "support" | "settings";
 
 interface AdForm {
   title: string;
@@ -64,6 +64,11 @@ function AdminPanel() {
   const [tab, setTab] = useState<Tab>("overview");
   const [users, setUsers] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [adminReply, setAdminReply] = useState("");
+  const [sendingAdminReply, setSendingAdminReply] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -103,7 +108,7 @@ function AdminPanel() {
 
   const loadAll = async () => {
     setBusy(true);
-    const [u, w, a, p, s, st, tc, t, gr, dep] = await Promise.all([
+    const [u, w, a, p, s, st, tc, t, gr, dep, sup] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawals").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("ads").select("*").order("created_at", { ascending: false }),
@@ -114,7 +119,9 @@ function AdminPanel() {
       supabase.from("tasks").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),  // ✅ YE ADD KAR
       supabase.from("game_rounds").select("*").order("created_at", { ascending: false }),
       supabase.from("deposits").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
+      supabase.from("support_tickets").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
     ]);
+    setSupportTickets(sup.data ?? []);
     setUsers(u.data ?? []);
     setWithdrawals(w.data ?? []);
     setAds(a.data ?? []);
@@ -170,6 +177,7 @@ setTaskCompletions(tcEnriched);
   }, {});
   const pendingSubs = subscriptions.filter((s) => !s.is_active).length;
   const pendingTasks = taskCompletions.filter((tc) => tc.status === "pending").length;
+  const openTickets = supportTickets.filter((t) => t.status !== "resolved").length;
   const activeAds = ads.filter((a) => a.is_active).length;
   const totalWithdrawn = withdrawals.filter((w) => w.status === "approved").reduce((s, w) => s + Number(w.amount ?? 0), 0);
 
@@ -475,6 +483,44 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
+  const loadTicketMessages = async (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+    const { data } = await supabase
+      .from("support_ticket_messages")
+      .select("*")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true });
+    setTicketMessages(data ?? []);
+  };
+
+  const sendAdminReply = async () => {
+    if (!selectedTicketId || !adminReply.trim() || !profile) return;
+    setSendingAdminReply(true);
+    const { error } = await supabase.from("support_ticket_messages").insert({
+      ticket_id: selectedTicketId,
+      sender_id: profile.id,
+      is_admin: true,
+      message: adminReply.trim(),
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setAdminReply("");
+      await loadTicketMessages(selectedTicketId);
+    }
+    setSendingAdminReply(false);
+  };
+
+  const toggleTicketStatus = async (ticketId: string, newStatus: "open" | "resolved") => {
+    const { error } = await supabase
+      .from("support_tickets")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", ticketId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(newStatus === "resolved" ? "Ticket marked resolved." : "Ticket reopened.");
+    loadAll();
+  };
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "overview", label: "Overview", icon: BarChart3 },
     { key: "users", label: "Users", icon: Users },
@@ -486,6 +532,7 @@ setTaskCompletions(tcEnriched);
     { key: "task_reviews", label: "Task Reviews", icon: ClipboardList },
     { key: "tasks_management", label: "Manage Tasks", icon: Briefcase }, // ✅ YE ADD KAR
     { key: "game", label: "$1 Game", icon: Ticket },
+    { key: "support", label: "Support Tickets", icon: MessageSquare },
     { key: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -510,6 +557,7 @@ setTaskCompletions(tcEnriched);
             {key === "withdrawals" && pendingWd > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingWd}</span>}
             {key === "subscriptions" && pendingSubs > 0 && <span className="bg-yellow-500 text-black text-xs rounded-full px-1.5 py-0.5">{pendingSubs}</span>}
             {key === "task_reviews" && pendingTasks > 0 && <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingTasks}</span>}
+            {key === "support" && openTickets > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{openTickets}</span>}
           </button>
         ))}
       </div>
@@ -1151,6 +1199,90 @@ setTaskCompletions(tcEnriched);
                 </tbody>
               </table>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* SUPPORT TICKETS */}
+      {tab === "support" && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-border/50 bg-card/80 overflow-hidden">
+            <div className="p-4 border-b border-border/50">
+              <h3 className="font-semibold">All Tickets ({supportTickets.length})</h3>
+            </div>
+            <div className="max-h-[600px] overflow-y-auto divide-y divide-border/50">
+              {supportTickets.length === 0 ? (
+                <p className="p-6 text-sm text-muted-foreground text-center">No tickets yet.</p>
+              ) : (
+                supportTickets.map((t: any) => (
+                  <button
+                    key={t.id}
+                    onClick={() => loadTicketMessages(t.id)}
+                    className={`w-full text-left p-4 hover:bg-muted/20 transition-colors ${selectedTicketId === t.id ? "bg-muted/30" : ""}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm truncate">{t.subject}</p>
+                      {t.status === "resolved" ? (
+                        <Badge className="bg-emerald-500/20 text-emerald-400 flex-shrink-0">Resolved</Badge>
+                      ) : (
+                        <Badge className="bg-yellow-500/20 text-yellow-400 flex-shrink-0">Open</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t.profiles?.full_name || t.profiles?.email || "Unknown user"} · {new Date(t.created_at).toLocaleString()}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="border-border/50 bg-card/80 p-4">
+            {!selectedTicketId ? (
+              <p className="text-sm text-muted-foreground text-center py-12">Select a ticket to view the conversation.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">
+                    {supportTickets.find((t) => t.id === selectedTicketId)?.subject}
+                  </h3>
+                  {supportTickets.find((t) => t.id === selectedTicketId)?.status === "resolved" ? (
+                    <Button size="sm" variant="outline" onClick={() => toggleTicketStatus(selectedTicketId, "open")}>
+                      Reopen
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => toggleTicketStatus(selectedTicketId, "resolved")}>
+                      Mark Resolved
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {ticketMessages.map((m: any) => (
+                    <div key={m.id} className={`flex ${m.is_admin ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.is_admin ? "bg-primary text-white" : "bg-muted/40"}`}>
+                        <p className="text-xs font-medium mb-1 opacity-80">{m.is_admin ? "You (Support)" : "User"}</p>
+                        <p>{m.message}</p>
+                        <p className="text-[10px] opacity-60 mt-1">{new Date(m.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    placeholder="Reply to user..."
+                    value={adminReply}
+                    onChange={(e) => setAdminReply(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") sendAdminReply(); }}
+                  />
+                  <Button onClick={sendAdminReply} disabled={sendingAdminReply || !adminReply.trim()}>
+                    {sendingAdminReply ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       )}
