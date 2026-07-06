@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/watch-ads")({
 function WatchAdsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [activeAd, setActiveAd] = useState<Ad | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [videoStarted, setVideoStarted] = useState(false);
@@ -71,9 +72,10 @@ function WatchAdsPage() {
 
   const watchedSet = useMemo(() => new Set(todayViews), [todayViews]);
   const completed = todayViews.length;
-  const maxDaily = 10;
+  const maxDaily = profile?.plan === "gold" ? 40 : profile?.plan === "silver" ? 20 : 10;
   const multiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
   const displayPoints = (base: number) => base * multiplier;
+  const quotaReached = completed >= maxDaily;
 
   // Tab visibility detection.
   //
@@ -252,11 +254,24 @@ function WatchAdsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">Today's Progress</h2>
-            <p className="text-sm text-muted-foreground">{completed} of {maxDaily} ads watched</p>
+            <p className="text-sm text-muted-foreground">
+              {completed} of {maxDaily} ads watched
+              <span className="ml-1.5 rounded-full bg-muted/40 px-2 py-0.5 text-xs font-medium capitalize">
+                {profile?.plan ?? "basic"} plan
+              </span>
+            </p>
           </div>
           <div className="text-3xl font-bold text-primary">{completed}/{maxDaily}</div>
         </div>
         <Progress value={(completed / maxDaily) * 100} className="mt-4" />
+        {quotaReached && profile?.plan !== "gold" && (
+          <button
+            onClick={() => navigate({ to: "/dashboard/subscription" })}
+            className="mt-3 w-full rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
+          >
+            🚀 Daily limit reached — Upgrade for {profile?.plan === "silver" ? "2x more ads (40/day) & 4x rewards" : "2-4x more ads & higher rewards"}
+          </button>
+        )}
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -293,10 +308,28 @@ function WatchAdsPage() {
                 </div>
                 <Button
                   className="mt-4 w-full bg-[image:var(--gradient-hero)]"
-                  disabled={done || completed >= maxDaily}
-                  onClick={() => setActiveAd(ad)}
+                  disabled={done}
+                  onClick={() => {
+                    if (done) return;
+                    if (quotaReached) {
+                      toast.error(
+                        profile?.plan === "gold"
+                          ? "Daily limit reached! Come back tomorrow for more."
+                          : "Daily limit reached! Upgrade your plan for more ads & higher rewards 🚀",
+                        {
+                          duration: 5000,
+                          action: profile?.plan === "gold" ? undefined : {
+                            label: "Upgrade",
+                            onClick: () => navigate({ to: "/dashboard/subscription" }),
+                          },
+                        }
+                      );
+                      return;
+                    }
+                    setActiveAd(ad);
+                  }}
                 >
-                  {done ? "Completed" : completed >= maxDaily ? "Limit reached" : "Watch Now"}
+                  {done ? "Completed" : quotaReached ? "🔒 Upgrade to Unlock" : "Watch Now"}
                 </Button>
               </div>
             </Card>
