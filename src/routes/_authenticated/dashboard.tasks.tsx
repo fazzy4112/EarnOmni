@@ -27,6 +27,7 @@ function TasksPage() {
   const qc = useQueryClient();
   const [completing, setCompleting] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"offerwall" | "tasks">("offerwall");
+  const planMultiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["approved_tasks"],
@@ -198,15 +199,31 @@ function TasksPage() {
       </div>
 
       {activeTab === "offerwall" && (
-        <Card className="border-border/50 bg-card/80 overflow-hidden p-0">
-          <iframe
-            sandbox="allow-popups allow-same-origin allow-scripts allow-forms allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox"
-            referrerPolicy="no-referrer"
-            src={`https://www.mobtrk.link/wall/8mQ7M?subid=${user?.id ?? ""}`}
-            style={{ width: "100%", height: "690px", border: "none" }}
-            title="EarnOmni Offerwall"
-          />
-        </Card>
+        <>
+          <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+            {planMultiplier > 1 ? (
+              <p>
+                🎉 <span className="font-semibold">Your {profile?.plan} plan gives you a {planMultiplier}x bonus</span> on
+                every offer you complete below — credited automatically to your balance (the numbers shown on the wall are base rates).
+              </p>
+            ) : (
+              <p>
+                🎁 Complete offers below to earn USDT.{" "}
+                <span className="font-semibold">Silver &amp; Gold members earn a 2x–4x bonus</span> on every offer completed here —
+                upgrade your plan to unlock it.
+              </p>
+            )}
+          </div>
+          <Card className="border-border/50 bg-card/80 overflow-hidden p-0">
+            <iframe
+              sandbox="allow-popups allow-same-origin allow-scripts allow-forms allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox"
+              referrerPolicy="no-referrer"
+              src={`https://www.mobtrk.link/wall/8mQ7M?subid=${user?.id ?? ""}`}
+              style={{ width: "100%", height: "690px", border: "none" }}
+              title="EarnOmni Offerwall"
+            />
+          </Card>
+        </>
       )}
 
       {activeTab === "tasks" && (
