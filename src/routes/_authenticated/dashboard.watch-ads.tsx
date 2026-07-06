@@ -100,7 +100,14 @@ function WatchAdsPage() {
         } else {
           if (hiddenSinceRef.current) {
             const elapsedSec = Math.floor((Date.now() - hiddenSinceRef.current) / 1000);
-            setRemaining((r) => Math.max(0, r - elapsedSec));
+            setRemaining((r) => {
+              const newRemaining = r - elapsedSec;
+              if (newRemaining <= 0) return 0; // genuinely watched the full duration
+              // Came back early — restart from the full duration instead of
+              // resuming, so repeatedly popping the tab open/closed can't
+              // slowly chip away at it a second or two at a time.
+              return activeAd.duration_seconds;
+            });
             hiddenSinceRef.current = null;
           }
           setIsTabActive(false);
@@ -314,7 +321,7 @@ function WatchAdsPage() {
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               <span>
                 {pauseReason === "returned_early"
-                  ? "You're back here already! Stay on the ad tab until the timer finishes."
+                  ? "You came back early — timer restarted from the beginning. Stay on the ad tab this time!"
                   : "Tab switch detected! Timer was paused."}
               </span>
               <button onClick={() => setTabWarning(false)} className="ml-auto">✕</button>
@@ -421,10 +428,10 @@ function WatchAdsPage() {
                 {!isTabActive && remaining > 0 && (
                   <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg gap-3">
                     <AlertTriangle className="h-12 w-12 text-yellow-400 mb-1" />
-                    <p className="text-white text-xl font-bold">Timer Paused!</p>
+                    <p className="text-white text-xl font-bold">Timer Restarted!</p>
                     <p className="text-gray-300 text-sm mt-1">
                       {pauseReason === "returned_early"
-                        ? "You're back on this tab. Switch to the ad tab to keep the timer running."
+                        ? "You came back too early, so it reset to the full duration. Go back and stay this time."
                         : "You switched tabs. Come back to continue."}
                     </p>
                     <p className="text-yellow-400 text-sm font-semibold">{remaining}s remaining</p>
