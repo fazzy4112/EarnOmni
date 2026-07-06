@@ -49,7 +49,7 @@ interface PlanForm {
 const emptyAdForm: AdForm = {
   title: "", description: "", ad_type: "youtube",
   ad_url: "", banner_image_url: "", click_url: "",
-  duration_seconds: 30, platform_value: 100, user_share_percent: 40,
+  duration_seconds: 30, platform_value: 20, user_share_percent: 10,
 };
 
 const emptyPlanForm: PlanForm = {
@@ -765,7 +765,7 @@ setTaskCompletions(tcEnriched);
                 <div><Label>Description</Label><Input placeholder="Brief description" value={adForm.description} onChange={(e) => setAdForm({ ...adForm, description: e.target.value })} /></div>
                 <div><Label>Duration (seconds)</Label><Input type="number" value={adForm.duration_seconds} onChange={(e) => setAdForm({ ...adForm, duration_seconds: Number(e.target.value) })} /></div>
                 <div><Label>Total Ad Value (points)</Label><Input type="number" value={adForm.platform_value} onChange={(e) => setAdForm({ ...adForm, platform_value: Number(e.target.value) })} /></div>
-                <div><Label>User Share % (40-50%)</Label><Input type="number" min="1" max="100" value={adForm.user_share_percent} onChange={(e) => setAdForm({ ...adForm, user_share_percent: Number(e.target.value) })} /></div>
+                <div><Label>User Share % (recommended: ~70% of real revenue)</Label><Input type="number" min="1" max="100" value={adForm.user_share_percent} onChange={(e) => setAdForm({ ...adForm, user_share_percent: Number(e.target.value) })} /></div>
               </div>
               <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-border/50">
                 <div className="flex items-center gap-2 mb-3"><Info className="h-4 w-4 text-blue-400" /><span className="text-sm font-semibold">Reward Preview</span></div>
@@ -775,6 +775,9 @@ setTaskCompletions(tcEnriched);
                   <div className="bg-background rounded-lg p-3"><div className="text-xs text-muted-foreground mb-1">Gold 4x</div><div className="text-lg font-bold text-yellow-400">{baseReward * 4} pts</div></div>
                   <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3"><div className="text-xs text-emerald-400 mb-1">Profit</div><div className="text-lg font-bold text-emerald-400">{adForm.platform_value - baseReward} pts</div></div>
                 </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  💡 Keep "Total Ad Value" close to your real Adsterra revenue per view (check Adsterra Statistics: Revenue ÷ Impressions × 1000 = points, since 1000 points = $1). Paying out more than you earn per view is a guaranteed loss at scale.
+                </p>
               </div>
               <div className="mt-4 flex gap-3">
                 <Button onClick={saveAd} disabled={savingAd} className="bg-emerald-500 hover:bg-emerald-600">

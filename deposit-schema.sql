@@ -81,3 +81,17 @@ end;
 $$;
 
 grant execute on function public.admin_reject_deposit(uuid, text) to authenticated;
+
+-- ============================================================
+-- FIX UNSUSTAINABLE AD REWARD RATES
+-- Real observed Adsterra revenue: ~$0.0023/ad view (69 impressions,
+-- 3 days). Old reward (40 pts = $0.04) was ~17x more than revenue,
+-- meaning a guaranteed loss on every single ad view. New rate pays
+-- ~70% of real revenue back to users (2 points = $0.002, Basic tier),
+-- keeping ~30% margin for the platform.
+-- ============================================================
+update public.ads
+set reward_points = 2,
+    platform_value = 20,
+    user_share_percent = 10
+where reward_points > 2;
