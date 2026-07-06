@@ -202,7 +202,7 @@ function TasksPage() {
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-border/50 bg-card/80 p-4 text-center">
           <p className="text-2xl font-bold text-primary">{tasks.length}</p>
-          <p className="text-xs text-muted-foreground">Available Tasks</p>
+          <p className="text-xs text-muted-foreground">Sponsor Tasks</p>
         </Card>
         <Card className="border-border/50 bg-card/80 p-4 text-center">
           <p className="text-2xl font-bold text-yellow-400">{pendingTaskIds.size}</p>
@@ -217,11 +217,11 @@ function TasksPage() {
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setActiveTab("offerwall")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "offerwall" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
-          🎁 Offers
+          🎁 Ad Offers
         </button>
         <button onClick={() => setActiveTab("tasks")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "tasks" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
-          📋 Available Tasks
+          📋 Sponsor Tasks
         </button>
         <button onClick={() => setActiveTab("submit")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "submit" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
