@@ -26,12 +26,7 @@ function TasksPage() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const [completing, setCompleting] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"offerwall" | "tasks" | "submit">("offerwall");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitForm, setSubmitForm] = useState({
-    title: "", description: "", task_url: "",
-    task_type: "link_visit", reward_points: 100, budget_usd: 50,
-  });
+  const [activeTab, setActiveTab] = useState<"offerwall" | "tasks">("offerwall");
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["approved_tasks"],
@@ -163,29 +158,6 @@ function TasksPage() {
       setCompleting(null);
     }, 3000);
   };
-  
-  const submitTask = async () => {
-    if (!user) return;
-    if (!submitForm.title || !submitForm.task_url) { toast.error("Title and URL required!"); return; }
-    setSubmitting(true);
-    const { error } = await supabase.from("tasks").insert({
-      investor_id: user.id,
-      title: submitForm.title,
-      description: submitForm.description,
-      task_url: submitForm.task_url,
-      task_type: submitForm.task_type,
-      reward_points: submitForm.reward_points,
-      budget_usd: submitForm.budget_usd,
-      status: "pending",
-      is_active: false,
-    });
-    if (error) { toast.error(error.message); }
-    else {
-      toast.success("✅ Task submitted for admin review!");
-      setSubmitForm({ title: "", description: "", task_url: "", task_type: "link_visit", reward_points: 100, budget_usd: 50 });
-    }
-    setSubmitting(false);
-  };
 
   return (
     <div className="space-y-6">
@@ -222,10 +194,6 @@ function TasksPage() {
         <button onClick={() => setActiveTab("tasks")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "tasks" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
           📋 Sponsor Tasks
-        </button>
-        <button onClick={() => setActiveTab("submit")}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "submit" ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground"}`}>
-          📤 Submit Task
         </button>
       </div>
 
@@ -310,51 +278,6 @@ function TasksPage() {
         </div>
       )}
 
-      {activeTab === "submit" && (
-        <Card className="border-border/50 bg-card/80 p-6 max-w-2xl">
-          <div className="flex items-center gap-2 mb-4">
-            <Briefcase className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Submit Investor Task</h3>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Task Type</label>
-              <select className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" value={submitForm.task_type} onChange={(e) => setSubmitForm({ ...submitForm, task_type: e.target.value })}>
-                <option value="link_visit">🌐 Visit Website</option>
-                <option value="youtube_subscribe">🎬 YouTube Subscribe</option>
-                <option value="social_follow">📱 Social Follow</option>
-                <option value="app_install">📲 App Install</option>
-                <option value="survey">📝 Survey</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Title *</label>
-              <input className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" value={submitForm.title} onChange={(e) => setSubmitForm({ ...submitForm, title: e.target.value })} placeholder="e.g. Subscribe to our channel" />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Description</label>
-              <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-20 resize-none" value={submitForm.description} onChange={(e) => setSubmitForm({ ...submitForm, description: e.target.value })} placeholder="What users need to do..." />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Task URL *</label>
-              <input type="url" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" value={submitForm.task_url} onChange={(e) => setSubmitForm({ ...submitForm, task_url: e.target.value })} placeholder="https://your-link.com" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Reward Points</label>
-                <input type="number" min="10" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" value={submitForm.reward_points} onChange={(e) => setSubmitForm({ ...submitForm, reward_points: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Budget (USD)</label>
-                <input type="number" min="10" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" value={submitForm.budget_usd} onChange={(e) => setSubmitForm({ ...submitForm, budget_usd: Number(e.target.value) })} />
-              </div>
-            </div>
-            <Button onClick={submitTask} disabled={submitting} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-              {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...</> : "📤 Submit for Review"}
-            </Button>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
