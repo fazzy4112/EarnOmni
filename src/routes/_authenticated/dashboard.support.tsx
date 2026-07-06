@@ -18,28 +18,28 @@ export const Route = createFileRoute("/_authenticated/dashboard/support")({
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Withdrawal kab process hoti hai?",
-    a: "Withdrawal requests generally submit hone ke 24-48 hours ke andar review ho jaati hain. Status 'Withdraw' page par track kar sakte ho.",
+    q: "When are withdrawals processed?",
+    a: "Withdrawal requests are typically reviewed within 24-48 hours after submission. You can track the status on the 'Withdraw' page.",
   },
   {
-    q: "Points aur Balance (USDT) mein kya farq hai?",
-    a: "Points aap ads/tasks se kamate hain jo balance mein convert hote hain. 'Balance' aapki asal USDT earning hai, jabke 'Deposit Balance' woh amount hai jo aapne khud deposit kiya hai (jaise $1 Game khelne ke liye).",
+    q: "What's the difference between Points and Balance (USDT)?",
+    a: "Points are earned from ads/tasks and get converted into your Balance. 'Balance' is your actual USDT earnings, while 'Deposit Balance' is money you've deposited yourself (e.g. to play the $1 Game).",
   },
   {
-    q: "Daily ads watch karne ki limit kyun hai?",
-    a: "Har plan ka alag daily quota hai: Basic 10/day, Silver 20/day, Gold 40/day. Zyada ads dekhne aur zyada reward (2x-4x) ke liye plan upgrade karein.",
+    q: "Why is there a daily limit on watching ads?",
+    a: "Each plan has a different daily quota: Basic 10/day, Silver 20/day, Gold 40/day. Upgrade your plan to watch more ads and earn a 2x-4x higher reward.",
   },
   {
-    q: "Referral commission kaise milta hai?",
-    a: "Jab koi aapke referral link se sign up kare aur deposit/plan purchase kare, tabhi aapko commission milta hai. Ad-watching earnings par referral commission nahi milta.",
+    q: "How does referral commission work?",
+    a: "You earn commission only when someone who signs up via your referral link makes a deposit or purchases a plan. Ad-watching earnings do not generate referral commission.",
   },
   {
-    q: "Offerwall mein offer complete kiya lekin reward nahi mila?",
-    a: "Kai baar offer network (CPAlead) ka reward signal aane mein kuch minutes se lekar 24 hours tak lag sakte hain. Agar 24 hours baad bhi credit na ho, hamein ek ticket submit karein — hum manually check kar denge.",
+    q: "I completed an offer on the offerwall but didn't get the reward?",
+    a: "Offer networks (like CPAlead) can sometimes take anywhere from a few minutes up to 24 hours to send the completion signal. If it's still not credited after 24 hours, please submit a ticket and we'll check it manually.",
   },
   {
-    q: "Deposit kitni der mein confirm hoti hai?",
-    a: "Deposit submit karne ke baad hum manually transaction hash verify karte hain — usually kuch hours lagte hain. Agar zyada der ho jaye to yahan ticket submit karein.",
+    q: "How long does a deposit take to confirm?",
+    a: "After you submit a deposit, we manually verify the transaction hash — this usually takes a few hours. If it's taking longer, please submit a ticket here.",
   },
 ];
 
@@ -95,7 +95,7 @@ function SupportPage() {
   const createTicket = async () => {
     if (!user) return;
     if (!newSubject.trim() || !newMessage.trim()) {
-      toast.error("Subject aur message dono zaroori hain!");
+      toast.error("Subject and message are both required!");
       return;
     }
     setSubmitting(true);
@@ -121,7 +121,7 @@ function SupportPage() {
     if (msgError) {
       toast.error(msgError.message);
     } else {
-      toast.success("✅ Ticket submit ho gaya! Hum jald reply karenge.");
+      toast.success("✅ Ticket submitted! We'll reply soon.");
       setNewSubject("");
       setNewMessage("");
       setCreating(false);
@@ -158,7 +158,7 @@ function SupportPage() {
           <h2 className="text-xl font-bold flex items-center gap-2">
             <LifeBuoy className="h-5 w-5 text-primary" /> Help &amp; Support
           </h2>
-          <p className="text-sm text-muted-foreground">FAQs dekhein ya humein ek ticket bhejein</p>
+          <p className="text-sm text-muted-foreground">Browse FAQs or send us a support ticket</p>
         </div>
       </div>
 
@@ -196,9 +196,9 @@ function SupportPage() {
             </Card>
           ))}
           <Card className="border-primary/30 bg-primary/5 p-4 text-center">
-            <p className="text-sm text-muted-foreground">Apna jawab nahi mila?</p>
+            <p className="text-sm text-muted-foreground">Didn't find your answer?</p>
             <Button className="mt-2" size="sm" onClick={() => { setSection("tickets"); setCreating(true); }}>
-              Support Ticket Bhejein
+              Submit a Support Ticket
             </Button>
           </Card>
         </div>
@@ -212,7 +212,7 @@ function SupportPage() {
             </Button>
           ) : (
             <Card className="border-border/50 bg-card/80 p-5 space-y-3">
-              <h3 className="font-semibold text-sm">Naya Support Ticket</h3>
+              <h3 className="font-semibold text-sm">New Support Ticket</h3>
               <input
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 placeholder="Subject (e.g. Withdrawal not received)"
@@ -221,7 +221,7 @@ function SupportPage() {
               />
               <textarea
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-24 resize-none"
-                placeholder="Apna masla tafseel se likhein..."
+                placeholder="Describe your issue in detail..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
               />
@@ -240,7 +240,7 @@ function SupportPage() {
             <Card className="border-border/50 bg-card/50 p-12 text-center">
               <LifeBuoy className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="font-semibold">Koi ticket nahi hai</p>
-              <p className="text-sm text-muted-foreground mt-1">Koi masla ho to "New Ticket" pe click karein</p>
+              <p className="text-sm text-muted-foreground mt-1">Click "New Ticket" if you have an issue</p>
             </Card>
           ) : (
             <div className="space-y-2">
@@ -304,7 +304,7 @@ function SupportPage() {
               <div className="mt-4 flex gap-2">
                 <input
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="Reply likhein..."
+                  placeholder="Type your reply..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") sendReply(); }}
