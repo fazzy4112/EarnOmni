@@ -34,8 +34,8 @@ const FAQS: { q: string; a: string }[] = [
     a: "You earn commission only when someone who signs up via your referral link makes a deposit or purchases a plan. Ad-watching earnings do not generate referral commission.",
   },
   {
-    q: "I completed an offer on the offerwall but didn't get the reward?",
-    a: "Offer networks (like CPAlead) can sometimes take anywhere from a few minutes up to 24 hours to send the completion signal. If it's still not credited after 24 hours, please submit a ticket and we'll check it manually.",
+    q: "I completed a task in Ad Offers but didn't get the reward?",
+    a: "Our partner networks can sometimes take anywhere from a few minutes up to 24 hours to confirm a completed offer. If it's still not credited after 24 hours, please submit a ticket and we'll check it manually.",
   },
   {
     q: "How long does a deposit take to confirm?",
