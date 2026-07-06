@@ -15,7 +15,7 @@ export interface Profile {
   is_active: boolean;
   is_admin: boolean;
   created_at: string;
-  user_number: number;
+  user_number: string;
   avatar_url: string | null;
   email_confirmed: boolean;
 }
