@@ -43,6 +43,10 @@ function WatchAdsPage() {
   // elapsed wall-clock time for "link" ads instead of trusting a ticking
   // interval (which browsers throttle in background tabs anyway).
   const hiddenSinceRef = useRef<number | null>(null);
+  // Mirrors `remaining` synchronously so the visibility handler can read the
+  // latest value without depending on the (possibly stale) closure value.
+  const remainingRef = useRef(0);
+  useEffect(() => { remainingRef.current = remaining; }, [remaining]);
 
   const { data: ads = [] } = useQuery({
     queryKey: ["ads"],
@@ -102,15 +106,20 @@ function WatchAdsPage() {
         } else {
           if (hiddenSinceRef.current) {
             const elapsedSec = Math.floor((Date.now() - hiddenSinceRef.current) / 1000);
-            setRemaining((r) => {
-              const newRemaining = r - elapsedSec;
-              if (newRemaining <= 0) return 0; // genuinely watched the full duration
-              // Came back early — restart from the full duration instead of
-              // resuming, so repeatedly popping the tab open/closed can't
-              // slowly chip away at it a second or two at a time.
-              return activeAd.duration_seconds;
-            });
+            const newRemaining = remainingRef.current - elapsedSec;
             hiddenSinceRef.current = null;
+            if (newRemaining <= 0) {
+              // Genuinely watched the full duration — mark as done, no warning.
+              setRemaining(0);
+              setIsTabActive(true);
+              setTabWarning(false);
+              setPauseReason(null);
+              return;
+            }
+            // Came back early — restart from the full duration instead of
+            // resuming, so repeatedly popping the tab open/closed can't
+            // slowly chip away at it a second or two at a time.
+            setRemaining(activeAd.duration_seconds);
           }
           setIsTabActive(false);
           setTabWarning(true);
