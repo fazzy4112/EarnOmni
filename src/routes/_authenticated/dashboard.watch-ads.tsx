@@ -34,11 +34,14 @@ function WatchAdsPage() {
   const [videoStarted, setVideoStarted] = useState(false);
   const [isTabActive, setIsTabActive] = useState(true);
   const [tabWarning, setTabWarning] = useState(false);
-  const [pauseReason, setPauseReason] = useState<"tab_switch" | "ad_closed" | null>(null);
+  const [pauseReason, setPauseReason] = useState<"tab_switch" | "returned_early" | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const adWindowRef = useRef<Window | null>(null);
-  const adWindowCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Timestamp (ms) when our own tab became hidden — used to bank real
+  // elapsed wall-clock time for "link" ads instead of trusting a ticking
+  // interval (which browsers throttle in background tabs anyway).
+  const hiddenSinceRef = useRef<number | null>(null);
 
   const { data: ads = [] } = useQuery({
     queryKey: ["ads"],
@@ -72,22 +75,52 @@ function WatchAdsPage() {
   const multiplier = profile?.plan === "gold" ? 4 : profile?.plan === "silver" ? 2 : 1;
   const displayPoints = (base: number) => base * multiplier;
 
-  // Tab visibility detection
+  // Tab visibility detection.
+  //
+  // For "link" (Direct Link / Smartlink) ads, we can't reliably detect via
+  // window.open()'s returned reference whether the user closed that tab —
+  // many mobile browsers don't keep that reference's `.closed` flag in
+  // sync for real tabs (as opposed to popups). So instead of trusting the
+  // opened window at all, we bank real wall-clock time based on when OUR
+  // OWN tab is hidden vs visible: progress only counts while our tab is
+  // hidden (i.e. the user is presumably away looking at the ad). The
+  // moment they come back to this tab, progress stops immediately —
+  // regardless of whether the ad tab is still open, was closed instantly,
+  // or never opened at all (e.g. popup blocked).
   useEffect(() => {
     const handleVisibility = () => {
-      if (activeAd?.ad_type === "link") return; // switching to view the opened ad is expected here
-      if (document.hidden) {
-        setIsTabActive(false);
-        setTabWarning(true);
-        setPauseReason("tab_switch");
-        toast.error("⚠️ Tab switch detected! Timer paused.", { duration: 3000 });
+      if (!activeAd || !videoStarted) return;
+
+      if (activeAd.ad_type === "link") {
+        if (document.hidden) {
+          hiddenSinceRef.current = Date.now();
+          setIsTabActive(true);
+          setTabWarning(false);
+          setPauseReason(null);
+        } else {
+          if (hiddenSinceRef.current) {
+            const elapsedSec = Math.floor((Date.now() - hiddenSinceRef.current) / 1000);
+            setRemaining((r) => Math.max(0, r - elapsedSec));
+            hiddenSinceRef.current = null;
+          }
+          setIsTabActive(false);
+          setTabWarning(true);
+          setPauseReason("returned_early");
+        }
       } else {
-        setIsTabActive(true);
+        if (document.hidden) {
+          setIsTabActive(false);
+          setTabWarning(true);
+          setPauseReason("tab_switch");
+          toast.error("⚠️ Tab switch detected! Timer paused.", { duration: 3000 });
+        } else {
+          setIsTabActive(true);
+        }
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [activeAd]);
+  }, [activeAd, videoStarted]);
 
   // Reset when new ad opens
   useEffect(() => {
@@ -99,15 +132,19 @@ function WatchAdsPage() {
       setRemaining(activeAd.duration_seconds);
       setVideoUrl(activeAd.ad_url);
       adWindowRef.current = null;
+      hiddenSinceRef.current = null;
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current);
     }
   }, [activeAd]);
 
-  // Timer
+  // Timer.
+  // For "link" ads, progress is instead banked directly from real elapsed
+  // hidden-time in the visibility handler above (background-tab timers get
+  // throttled by browsers, so a ticking interval isn't trustworthy there).
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    if (activeAd?.ad_type === "link") return;
     if (!videoStarted || !isTabActive || remaining <= 0) return;
     intervalRef.current = setInterval(() => {
       setRemaining((r) => {
@@ -116,7 +153,7 @@ function WatchAdsPage() {
       });
     }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [videoStarted, isTabActive]);
+  }, [videoStarted, isTabActive, activeAd]);
 
   // Reflect the countdown in the browser tab title, so it stays visible
   // in the tab bar even after opening a Direct Link ad in a new tab.
@@ -131,31 +168,14 @@ function WatchAdsPage() {
     return () => { document.title = "EarnOmni"; };
   }, [remaining, videoStarted]);
 
-  // For Direct Link ads, watch the opened window: if it's closed before
-  // the timer finishes, pause progress (the user can't just pop the ad
-  // open and immediately close it to skip watching).
-  useEffect(() => {
-    if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current);
-    if (!videoStarted || activeAd?.ad_type !== "link" || remaining <= 0) return;
-    adWindowCheckRef.current = setInterval(() => {
-      const win = adWindowRef.current;
-      if (win && win.closed) {
-        setIsTabActive(false);
-        setTabWarning(true);
-        setPauseReason("ad_closed");
-      }
-    }, 1000);
-    return () => { if (adWindowCheckRef.current) clearInterval(adWindowCheckRef.current); };
-  }, [videoStarted, activeAd, remaining]);
-
   const openAdWindow = () => {
     if (!activeAd) return;
-    const win = window.open(activeAd.ad_url, "_blank", "noreferrer");
+    const win = window.open(activeAd.ad_url, "_blank", "noopener");
     adWindowRef.current = win;
-    if (isTabActive === false && pauseReason === "ad_closed") {
-      setIsTabActive(true);
-      setTabWarning(false);
-      setPauseReason(null);
+    if (!win) {
+      // Popup blocked — nothing opened, so our tab never goes hidden and
+      // the timer correctly never progresses. Tell the user why.
+      toast.error("Popup blocked! Please allow popups for this site, then tap the button again.", { duration: 5000 });
     }
   };
 
@@ -293,8 +313,8 @@ function WatchAdsPage() {
             <div className="mb-3 flex items-center gap-2 bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-2 text-red-400 text-sm">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               <span>
-                {pauseReason === "ad_closed"
-                  ? "Ad tab was closed early! Timer paused — reopen it to continue."
+                {pauseReason === "returned_early"
+                  ? "You're back here already! Stay on the ad tab until the timer finishes."
                   : "Tab switch detected! Timer was paused."}
               </span>
               <button onClick={() => setTabWarning(false)} className="ml-auto">✕</button>
@@ -350,7 +370,7 @@ function WatchAdsPage() {
                     <div>
                       <p className="text-lg font-semibold text-white">Ad opened in a new tab</p>
                       <p className="mt-1 text-sm text-gray-400">
-                        Check out the offer, then come back to this tab — your timer is running here.
+                        Stay on that ad tab until the timer finishes — coming back here early pauses your progress.
                       </p>
                     </div>
                     <Button
@@ -398,17 +418,17 @@ function WatchAdsPage() {
                 </div>
 
                 {/* Tab inactive overlay */}
-                {!isTabActive && (
+                {!isTabActive && remaining > 0 && (
                   <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg gap-3">
                     <AlertTriangle className="h-12 w-12 text-yellow-400 mb-1" />
                     <p className="text-white text-xl font-bold">Timer Paused!</p>
                     <p className="text-gray-300 text-sm mt-1">
-                      {pauseReason === "ad_closed"
-                        ? "You closed the ad tab early. Reopen it to keep going."
+                      {pauseReason === "returned_early"
+                        ? "You're back on this tab. Switch to the ad tab to keep the timer running."
                         : "You switched tabs. Come back to continue."}
                     </p>
                     <p className="text-yellow-400 text-sm font-semibold">{remaining}s remaining</p>
-                    {pauseReason === "ad_closed" && (
+                    {pauseReason === "returned_early" && (
                       <Button size="sm" variant="outline" onClick={openAdWindow}>
                         Reopen ad
                       </Button>
