@@ -146,3 +146,11 @@
     color: var(--color-foreground);
   }
 }
+
+/* Distinctive display face for marketing headlines, used sparingly
+   (landing page headings + wordmark) — body text stays on the default
+   system stack for readability and app-wide consistency. */
+.font-display {
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
