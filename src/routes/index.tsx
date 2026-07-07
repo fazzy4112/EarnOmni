@@ -170,8 +170,8 @@ function Index() {
       <section id="plans" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-bold md:text-4xl">Subscription Plans</h2>
-            <p className="mt-4 text-muted-foreground">Boost your earnings with a paid plan — cancel anytime.</p>
+            <h2 className="font-display text-3xl font-bold md:text-4xl">Upgrade Plans</h2>
+            <p className="mt-4 text-muted-foreground">One-time payment, lifetime benefits — no recurring charges, no subscriptions.</p>
           </div>
 
           {plansLoading ? (
@@ -205,7 +205,7 @@ function Index() {
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-4xl font-bold">${plan.price_usd}</span>
                     <span className="text-sm text-muted-foreground">
-                      {plan.price_usd === 0 ? "/forever" : "/month"}
+                      {plan.price_usd === 0 ? "/forever" : "one-time"}
                     </span>
                   </div>
 
