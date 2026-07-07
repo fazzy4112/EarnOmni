@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { FAQS, faqJsonLd } from "@/lib/faqs";
-import { usePopunderAd } from "@/hooks/use-popunder";
 import heroImage from "@/assets/hero.jpg";
 
 export const Route = createFileRoute("/")({
@@ -28,9 +27,6 @@ export const Route = createFileRoute("/")({
 function Index() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  // Adsterra Popunder — passive site monetization on this page only.
-  usePopunderAd();
 
   // Load plans from DATABASE — auto updates when admin changes!
   const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -59,7 +55,7 @@ function Index() {
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
               <Logo className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight">EarnOmni</span>
+            <span className="font-display text-lg font-bold tracking-tight">EarnOmni</span>
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
@@ -113,7 +109,7 @@ function Index() {
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               Live payouts — over $50,000 distributed
             </div>
-            <h1 className="text-5xl font-bold leading-tight tracking-tight md:text-6xl">
+            <h1 className="font-display text-5xl font-bold leading-tight tracking-tight md:text-6xl">
               Complete Simple Tasks,{" "}
               <span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">
                 Earn Real Money
@@ -150,7 +146,7 @@ function Index() {
       <section id="how" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold md:text-4xl">How it works</h2>
+            <h2 className="font-display text-3xl font-bold md:text-4xl">How it works</h2>
             <p className="mt-4 text-muted-foreground">Three steps from sign-up to your first payout.</p>
           </div>
           <div className="mt-16 grid gap-6 md:grid-cols-3">
@@ -174,7 +170,7 @@ function Index() {
       <section id="plans" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold md:text-4xl">Subscription Plans</h2>
+            <h2 className="font-display text-3xl font-bold md:text-4xl">Subscription Plans</h2>
             <p className="mt-4 text-muted-foreground">Boost your earnings with a paid plan — cancel anytime.</p>
           </div>
 
@@ -248,7 +244,7 @@ function Index() {
       <section id="features" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold md:text-4xl">Built for serious earners</h2>
+            <h2 className="font-display text-3xl font-bold md:text-4xl">Built for serious earners</h2>
           </div>
           <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[
@@ -270,7 +266,7 @@ function Index() {
       {/* FAQ */}
       <section id="faq" className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-3xl px-6">
-          <h2 className="text-center text-3xl font-bold md:text-4xl">Frequently asked questions</h2>
+          <h2 className="font-display text-center text-3xl font-bold md:text-4xl">Frequently asked questions</h2>
           <div className="mt-10 space-y-3">
             {FAQS.map((faq, i) => (
               <Card key={faq.q} className="border-border/50 bg-card/50 p-0 overflow-hidden">
@@ -299,7 +295,7 @@ function Index() {
       {/* CTA */}
       <section className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-3xl font-bold md:text-4xl">Start earning today</h2>
+          <h2 className="font-display text-3xl font-bold md:text-4xl">Start earning today</h2>
           <p className="mt-4 text-muted-foreground">Join thousands of users already cashing out weekly.</p>
           <Link to="/auth">
             <Button size="lg" className="mt-8 bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
@@ -317,9 +313,9 @@ function Index() {
           </div>
           <div className="flex gap-6">
             <Link to="/about" className="hover:text-foreground">About</Link>
-            <a href="#" className="hover:text-foreground">Terms</a>
-            <a href="#" className="hover:text-foreground">Privacy</a>
-            <a href="#" className="hover:text-foreground">Contact</a>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <a href="mailto:support@earnomni.com" className="hover:text-foreground">Contact</a>
           </div>
         </div>
       </footer>
