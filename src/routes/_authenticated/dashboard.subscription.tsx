@@ -101,9 +101,9 @@ function SubscriptionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Subscription Plans</h2>
+        <h2 className="text-2xl font-bold">Upgrade Plans</h2>
         <p className="text-muted-foreground">
-          Current plan:{" "}
+          One-time payment, lifetime benefits — no recurring charges. Current plan:{" "}
           <span className="font-semibold text-primary capitalize">
             {profile?.plan ?? "basic"}
           </span>
@@ -143,7 +143,7 @@ function SubscriptionPage() {
               <div className="mt-2 flex items-baseline gap-1">
                 <span className="text-4xl font-bold">${p.price_usd}</span>
                 <span className="text-sm text-muted-foreground">
-                  {p.price_usd === 0 ? "/forever" : "/month"}
+                  {p.price_usd === 0 ? "/forever" : "one-time"}
                 </span>
               </div>
               <div className="mt-1 text-sm font-semibold text-emerald-400">
