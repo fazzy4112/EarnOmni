@@ -252,9 +252,9 @@ function AboutPage() {
           </div>
           <div className="flex gap-6">
             <Link to="/about" className="hover:text-foreground">About</Link>
-            <a href="#" className="hover:text-foreground">Terms</a>
-            <a href="#" className="hover:text-foreground">Privacy</a>
-            <a href="#" className="hover:text-foreground">Contact</a>
+            <a href="/terms" className="hover:text-foreground">Terms</a>
+            <a href="/privacy" className="hover:text-foreground">Privacy</a>
+            <a href="mailto:support@earnomni.com" className="hover:text-foreground">Contact</a>
           </div>
         </div>
       </footer>
