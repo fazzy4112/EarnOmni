@@ -54,7 +54,7 @@ const emptyAdForm: AdForm = {
 
 const emptyPlanForm: PlanForm = {
   name: "", label: "", price_usd: 0, multiplier: 1,
-  duration_days: 30, features: "", is_active: true,
+  duration_days: 0, features: "", is_active: true,
   is_popular: false, sort_order: 0,
 };
 
@@ -889,18 +889,13 @@ setTaskCompletions(tcEnriched);
                 </div>
                 <div><Label>Display Label *</Label><Input placeholder="e.g. Silver" value={planForm.label} onChange={(e) => setPlanForm({ ...planForm, label: e.target.value })} /></div>
                 <div>
-                  <Label>Price (USD/month)</Label>
+                  <Label>Price (USD, one-time)</Label>
                   <Input type="number" min="0" value={planForm.price_usd} onChange={(e) => setPlanForm({ ...planForm, price_usd: Number(e.target.value) })} />
                   <p className="text-xs text-muted-foreground mt-1">0 = Free plan</p>
                 </div>
                 <div>
                   <Label>Earning Multiplier</Label>
                   <Input type="number" min="1" value={planForm.multiplier} onChange={(e) => setPlanForm({ ...planForm, multiplier: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>Duration (days)</Label>
-                  <Input type="number" min="0" value={planForm.duration_days} onChange={(e) => setPlanForm({ ...planForm, duration_days: Number(e.target.value) })} />
-                  <p className="text-xs text-muted-foreground mt-1">0 = Lifetime</p>
                 </div>
                 <div><Label>Sort Order</Label><Input type="number" min="0" value={planForm.sort_order} onChange={(e) => setPlanForm({ ...planForm, sort_order: Number(e.target.value) })} /></div>
                 <div className="md:col-span-2">
