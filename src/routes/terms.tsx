@@ -76,9 +76,11 @@ function TermsPage() {
           <div>
             <h2>5. Deposits and paid plans</h2>
             <p>
-              Deposits and plan purchases are non-refundable except where required by applicable law.
-              Deposited funds are separate from earned balance and are used only for features that
-              explicitly require them (e.g. paid game entries).
+              Paid plans are a <strong>one-time payment</strong> that unlocks higher earning rates and
+              daily limits permanently on your account — there are no recurring charges or automatic
+              renewals. Deposits and plan purchases are non-refundable except where required by
+              applicable law. Deposited funds are separate from earned balance and are used only for
+              features that explicitly require them (e.g. paid game entries).
             </p>
           </div>
 
