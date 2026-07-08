@@ -6,7 +6,7 @@
 // each, scores the result, and persists it into content_drafts for
 // the Dashboard/Approval System.
 
-import Anthropic from "npm:@anthropic-ai/sdk";
+import Anthropic from "npm:@anthropic-ai/sdk@0.110.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -107,14 +107,27 @@ function extractJson(rawText: string): unknown {
   }
 }
 
+function describeAnthropicError(error: unknown): string {
+  if (error instanceof Anthropic.APIError) {
+    return `Anthropic API error (${error.status ?? "unknown status"}): ${error.message}`;
+  }
+  if (error instanceof Error) {
+    return `Anthropic API call failed: ${error.message}`;
+  }
+  return `Anthropic API call failed: ${String(error)}`;
+}
+
 async function generateArticle(anthropic: Anthropic, keyword: SeoKeywordRow): Promise<GeneratedArticle> {
-  const response = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    thinking: { type: "adaptive" },
-    output_config: { effort: "high" },
-    messages: [{ role: "user", content: buildPrompt(keyword) }],
-  });
+  let response: Anthropic.Message;
+  try {
+    response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      messages: [{ role: "user", content: buildPrompt(keyword) }],
+    });
+  } catch (error) {
+    throw new Error(describeAnthropicError(error));
+  }
 
   const textBlock = response.content.find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text") {
