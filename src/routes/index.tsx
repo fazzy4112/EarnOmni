@@ -110,9 +110,9 @@ function Index() {
               Live payouts — over $50,000 distributed
             </div>
             <h1 className="font-display text-5xl font-bold leading-tight tracking-tight md:text-6xl">
-              Complete Simple Tasks,{" "}
+              Watch Ads, Complete Tasks,{" "}
               <span className="bg-[image:var(--gradient-hero)] bg-clip-text text-transparent">
-                Earn Real Money
+                Earn Real USDT
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
