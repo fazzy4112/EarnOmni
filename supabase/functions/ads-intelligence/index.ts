@@ -171,7 +171,15 @@ function describeAnthropicError(error: unknown): string {
 
 function truncate(text: string, maxLength: number): string {
   const trimmed = text.trim();
-  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+  if (trimmed.length <= maxLength) return trimmed;
+
+  const hardCut = trimmed.slice(0, maxLength);
+  const lastSpaceIndex = hardCut.lastIndexOf(" ");
+  if (lastSpaceIndex === -1) {
+    // No word boundary within the limit — the word itself exceeds it, hard-cut as a last resort.
+    return hardCut;
+  }
+  return hardCut.slice(0, lastSpaceIndex);
 }
 
 function normalizeBrief(raw: unknown, keyword: SeoKeywordRow): CampaignBrief {
