@@ -327,11 +327,35 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: keywords, error: keywordsError } = await supabase
+    const { data: briefRows, error: briefRowsError } = await supabase
+      .from("ad_campaign_briefs")
+      .select("target_keyword_id, platform")
+      .not("target_keyword_id", "is", null);
+    if (briefRowsError) throw new Error(`Failed to load existing ad_campaign_briefs: ${briefRowsError.message}`);
+
+    const platformsByKeywordId = new Map<string, Set<string>>();
+    for (const row of briefRows ?? []) {
+      const keywordId = row.target_keyword_id as string;
+      const platforms = platformsByKeywordId.get(keywordId) ?? new Set<string>();
+      platforms.add(row.platform as string);
+      platformsByKeywordId.set(keywordId, platforms);
+    }
+
+    const fullyCoveredKeywordIds = Array.from(platformsByKeywordId.entries())
+      .filter(([, platforms]) => platforms.has("google_ads") && platforms.has("meta_ads"))
+      .map(([keywordId]) => keywordId);
+
+    let keywordQuery = supabase
       .from("seo_keywords")
       .select("id, keyword, search_volume, difficulty_score, intent, target_country, priority")
       .order("priority", { ascending: false })
       .limit(batchSize);
+
+    if (fullyCoveredKeywordIds.length > 0) {
+      keywordQuery = keywordQuery.not("id", "in", `(${fullyCoveredKeywordIds.join(",")})`);
+    }
+
+    const { data: keywords, error: keywordsError } = await keywordQuery;
     if (keywordsError) throw new Error(`Failed to load seo_keywords: ${keywordsError.message}`);
 
     const results: Array<{ keyword: string; ad_group_name: string; creative_direction: string }> = [];
