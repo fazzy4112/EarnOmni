@@ -85,9 +85,6 @@ plan = 2 tickets, Gold plan = 4 tickets.
 - The winner is selected automatically and randomly — there is no manual or admin \
 selection.
 - The winner's $100 is credited to their withdrawable earnings balance.
-- This feature is currently paused by the admin. Do not imply it is actively \
-running or write "join now and win" language — describe it as an available or \
-upcoming platform feature instead.
 
 Referral Commission:
 - Commission is earned ONLY when a referred user subscribes to a paid plan AND \
