@@ -14,13 +14,14 @@ import {
   BarChart3, Settings, Info, Save, Crown, Star,
   CheckCircle2, ClipboardList, Briefcase, ExternalLink,
   Ticket, Trophy, CircleDollarSign, MessageSquare,
+  Rocket, Mail,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPanel,
 });
 
-type Tab = "overview" | "users" | "withdrawals" | "deposits" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "support" | "settings";
+type Tab = "overview" | "users" | "withdrawals" | "deposits" | "ads" | "plans" | "subscriptions" | "task_reviews" | "tasks_management" | "game" | "support" | "settings" | "growth_engine";
 
 interface AdForm {
   title: string;
@@ -58,6 +59,10 @@ const emptyPlanForm: PlanForm = {
   is_popular: false, sort_order: 0,
 };
 
+// content_drafts has no word_count column — derive it from the body text.
+const countWords = (text: string | null | undefined) =>
+  text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+
 function AdminPanel() {
   const { profile, loading } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
@@ -82,6 +87,14 @@ function AdminPanel() {
   const [crediting, setCrediting] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [deposits, setDeposits] = useState<any[]>([]);
+
+  // Growth Engine
+  const [seoKeywords, setSeoKeywords] = useState<any[]>([]);
+  const [seoAudits, setSeoAudits] = useState<any[]>([]);
+  const [contentDraftsPending, setContentDraftsPending] = useState<any[]>([]);
+  const [adBriefsPending, setAdBriefsPending] = useState<any[]>([]);
+  const [sendingSummary, setSendingSummary] = useState(false);
+  const [summaryResult, setSummaryResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Ad form
   const [showAdForm, setShowAdForm] = useState(false);
@@ -108,7 +121,7 @@ function AdminPanel() {
 
   const loadAll = async () => {
     setBusy(true);
-    const [u, w, a, p, s, st, tc, t, gr, dep, sup] = await Promise.all([
+    const [u, w, a, p, s, st, tc, t, gr, dep, sup, sk, sa, cd, ab] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawals").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("ads").select("*").order("created_at", { ascending: false }),
@@ -120,6 +133,10 @@ function AdminPanel() {
       supabase.from("game_rounds").select("*").order("created_at", { ascending: false }),
       supabase.from("deposits").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
       supabase.from("support_tickets").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
+      supabase.from("seo_keywords").select("*").order("priority", { ascending: false }).limit(5),
+      supabase.from("seo_audits").select("*").order("created_at", { ascending: false }),
+      supabase.from("content_drafts").select("*, seo_keywords(keyword)").eq("status", "draft").order("created_at", { ascending: false }),
+      supabase.from("ad_campaign_briefs").select("*, seo_keywords(keyword)").eq("status", "draft").order("created_at", { ascending: false }),
     ]);
     setSupportTickets(sup.data ?? []);
     setUsers(u.data ?? []);
@@ -130,6 +147,10 @@ function AdminPanel() {
     setSubscriptions(s.data ?? []);
     setGameRounds(gr.data ?? []);
     setDeposits(dep.data ?? []);
+    setSeoKeywords(sk.data ?? []);
+    setSeoAudits(sa.data ?? []);
+    setContentDraftsPending(cd.data ?? []);
+    setAdBriefsPending(ab.data ?? []);
     const tcRaw = tc.data ?? [];
 const tcEnriched = await Promise.all(
   tcRaw.map(async (item: any) => {
@@ -180,6 +201,22 @@ setTaskCompletions(tcEnriched);
   const openTickets = supportTickets.filter((t) => t.status !== "resolved").length;
   const activeAds = ads.filter((a) => a.is_active).length;
   const totalWithdrawn = withdrawals.filter((w) => w.status === "approved").reduce((s, w) => s + Number(w.amount ?? 0), 0);
+
+  // Growth Engine derived data
+  const auditSeverityTotals = seoAudits.reduce(
+    (acc, a) => {
+      const s = a.severity_summary || {};
+      acc.critical += s.critical ?? 0;
+      acc.warning += s.warning ?? 0;
+      acc.good += s.good ?? 0;
+      return acc;
+    },
+    { critical: 0, warning: 0, good: 0 },
+  );
+  const latestAudits = seoAudits.slice(0, 5);
+  const googleAdsPending = adBriefsPending.filter((b) => b.platform === "google_ads");
+  const metaAdsPending = adBriefsPending.filter((b) => b.platform === "meta_ads");
+  const pendingGrowthItems = contentDraftsPending.length + adBriefsPending.length;
 
   // Withdrawal actions
   const updateWithdrawal = async (id: string, status: "approved" | "rejected") => {
@@ -483,6 +520,48 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
+  // Growth Engine actions
+  const updateContentDraftStatus = async (id: string, status: "approved" | "rejected") => {
+    const { error } = await supabase.from("content_drafts").update({ status }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Content draft ${status}!`);
+    loadAll();
+  };
+
+  const updateAdBriefStatus = async (id: string, status: "approved" | "rejected") => {
+    const { error } = await supabase.from("ad_campaign_briefs").update({ status }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Ad campaign brief ${status}!`);
+    loadAll();
+  };
+
+  const sendWeeklySummary = async () => {
+    setSendingSummary(true);
+    setSummaryResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-growth-summary");
+      if (error) {
+        let message = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) message = body.error;
+        } catch {
+          // Fall back to the raw error message below.
+        }
+        throw new Error(message);
+      }
+      const message = data?.message ?? "Weekly summary email sent!";
+      setSummaryResult({ success: true, message });
+      toast.success(message);
+    } catch (err: any) {
+      const message = err?.message || "Failed to send weekly summary email.";
+      setSummaryResult({ success: false, message });
+      toast.error(message);
+    } finally {
+      setSendingSummary(false);
+    }
+  };
+
   const loadTicketMessages = async (ticketId: string) => {
     setSelectedTicketId(ticketId);
     const { data } = await supabase
@@ -534,6 +613,7 @@ setTaskCompletions(tcEnriched);
     { key: "game", label: "$1 Game", icon: Ticket },
     { key: "support", label: "Support Tickets", icon: MessageSquare },
     { key: "settings", label: "Settings", icon: Settings },
+    { key: "growth_engine", label: "Growth Engine", icon: Rocket },
   ];
 
   const baseReward = calcReward(adForm.platform_value, adForm.user_share_percent);
@@ -558,6 +638,7 @@ setTaskCompletions(tcEnriched);
             {key === "subscriptions" && pendingSubs > 0 && <span className="bg-yellow-500 text-black text-xs rounded-full px-1.5 py-0.5">{pendingSubs}</span>}
             {key === "task_reviews" && pendingTasks > 0 && <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingTasks}</span>}
             {key === "support" && openTickets > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{openTickets}</span>}
+            {key === "growth_engine" && pendingGrowthItems > 0 && <span className="bg-emerald-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingGrowthItems}</span>}
           </button>
         ))}
       </div>
@@ -1477,6 +1558,211 @@ setTaskCompletions(tcEnriched);
                 </tbody>
               </table>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* GROWTH ENGINE */}
+      {tab === "growth_engine" && (
+        <div className="space-y-6">
+          {/* Research Engine */}
+          <Card className="overflow-hidden border-border/50 bg-card/80">
+            <div className="p-4 border-b border-border/40">
+              <h3 className="font-semibold">Research Engine — Top Keywords</h3>
+              <p className="text-xs text-muted-foreground">Top 5 keywords by priority</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="p-3">Keyword</th>
+                    <th className="p-3">Priority</th>
+                    <th className="p-3">Search Volume</th>
+                    <th className="p-3">Intent</th>
+                    <th className="p-3">Country</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {seoKeywords.map((k) => (
+                    <tr key={k.id} className="border-t border-border/40 hover:bg-muted/20">
+                      <td className="p-3 font-medium">{k.keyword}</td>
+                      <td className="p-3">{k.priority}</td>
+                      <td className="p-3">{k.search_volume ?? "—"}</td>
+                      <td className="p-3">{k.intent ? <Badge variant="outline" className="capitalize">{k.intent}</Badge> : "—"}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{k.target_country ?? "—"}</td>
+                    </tr>
+                  ))}
+                  {seoKeywords.length === 0 && (
+                    <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No keywords researched yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* On-Page SEO Audits */}
+          <Card className="overflow-hidden border-border/50 bg-card/80">
+            <div className="p-4 border-b border-border/40">
+              <h3 className="font-semibold">On-Page SEO Audits</h3>
+              <p className="text-xs text-muted-foreground">{seoAudits.length} page audit(s) on record</p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 p-4 border-b border-border/40">
+              <div className="text-center">
+                <p className="text-xl font-bold text-red-400">{auditSeverityTotals.critical}</p>
+                <p className="text-xs text-muted-foreground">Critical</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-yellow-400">{auditSeverityTotals.warning}</p>
+                <p className="text-xs text-muted-foreground">Warning</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-emerald-400">{auditSeverityTotals.good}</p>
+                <p className="text-xs text-muted-foreground">Good</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="p-3">Page URL</th>
+                    <th className="p-3">Critical</th>
+                    <th className="p-3">Warning</th>
+                    <th className="p-3">Good</th>
+                    <th className="p-3">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestAudits.map((a) => (
+                    <tr key={a.id} className="border-t border-border/40 hover:bg-muted/20">
+                      <td className="p-3 max-w-xs truncate">{a.page_url}</td>
+                      <td className="p-3 text-red-400">{a.severity_summary?.critical ?? 0}</td>
+                      <td className="p-3 text-yellow-400">{a.severity_summary?.warning ?? 0}</td>
+                      <td className="p-3 text-emerald-400">{a.severity_summary?.good ?? 0}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                  {latestAudits.length === 0 && (
+                    <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No audits yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Content Drafts */}
+          <Card className="overflow-hidden border-border/50 bg-card/80">
+            <div className="p-4 border-b border-border/40">
+              <h3 className="font-semibold">Content Drafts — Awaiting Approval</h3>
+              <p className="text-xs text-muted-foreground">{contentDraftsPending.length} draft(s) pending review</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="p-3">Title</th>
+                    <th className="p-3">Keyword</th>
+                    <th className="p-3">SEO Score</th>
+                    <th className="p-3">Words</th>
+                    <th className="p-3">Created</th>
+                    <th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contentDraftsPending.map((d) => (
+                    <tr key={d.id} className="border-t border-border/40 hover:bg-muted/20">
+                      <td className="p-3 font-medium max-w-xs truncate">{d.title}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{d.seo_keywords?.keyword ?? "—"}</td>
+                      <td className="p-3"><Badge variant={(d.seo_score ?? 0) >= 70 ? "default" : "secondary"}>{d.seo_score ?? 0}/100</Badge></td>
+                      <td className="p-3">{countWords(d.body)}</td>
+                      <td className="p-3 text-xs">{new Date(d.created_at).toLocaleDateString()}</td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-emerald-500" onClick={() => updateContentDraftStatus(d.id, "approved")}>
+                            <Check className="h-3.5 w-3.5 mr-1" /> Approve for Publishing
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => updateContentDraftStatus(d.id, "rejected")}>
+                            <X className="h-3.5 w-3.5 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {contentDraftsPending.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No drafts pending approval</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Ad Campaign Briefs */}
+          <Card className="overflow-hidden border-border/50 bg-card/80">
+            <div className="p-4 border-b border-border/40">
+              <h3 className="font-semibold">Ad Campaign Briefs — Awaiting Approval</h3>
+              <p className="text-xs text-muted-foreground">{adBriefsPending.length} brief(s) pending review</p>
+            </div>
+
+            {[
+              { label: "Google Ads", rows: googleAdsPending },
+              { label: "Meta Ads", rows: metaAdsPending },
+            ].map(({ label, rows }) => (
+              <div key={label} className="border-b border-border/40 last:border-b-0">
+                <div className="px-4 pt-4 pb-1">
+                  <h4 className="text-sm font-semibold">{label}</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                      <tr>
+                        <th className="p-3">Keyword</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Created</th>
+                        <th className="p-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((b: any) => (
+                        <tr key={b.id} className="border-t border-border/40 hover:bg-muted/20">
+                          <td className="p-3 text-xs text-muted-foreground">{b.seo_keywords?.keyword ?? b.campaign_data?.keyword ?? "—"}</td>
+                          <td className="p-3"><Badge variant="secondary">{b.status}</Badge></td>
+                          <td className="p-3 text-xs">{new Date(b.created_at).toLocaleDateString()}</td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <Button size="sm" className="bg-emerald-500" onClick={() => updateAdBriefStatus(b.id, "approved")}>
+                                <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => updateAdBriefStatus(b.id, "rejected")}>
+                                <X className="h-3.5 w-3.5 mr-1" /> Reject
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {rows.length === 0 && (
+                        <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No {label} briefs pending approval</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Growth Engine Actions */}
+          <Card className="border-border/50 bg-card/80 p-6">
+            <h3 className="font-semibold mb-1">Growth Engine Actions</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Send an on-demand summary of Growth Engine activity to the admin inbox.
+            </p>
+            <Button onClick={sendWeeklySummary} disabled={sendingSummary} className="bg-emerald-500 hover:bg-emerald-600">
+              {sendingSummary ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Send Weekly Summary Email
+            </Button>
+            {summaryResult && (
+              <p className={`mt-3 text-sm ${summaryResult.success ? "text-emerald-400" : "text-red-400"}`}>
+                {summaryResult.message}
+              </p>
+            )}
           </Card>
         </div>
       )}
