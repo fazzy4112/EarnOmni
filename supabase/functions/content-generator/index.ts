@@ -70,6 +70,41 @@ function buildPrompt(keyword: SeoKeywordRow): string {
 earning platform where users earn crypto by watching ads, completing simple \
 online tasks, and referring friends.
 
+PLATFORM_FACTS (whenever the article mentions the Lucky Draw / $1 Game or the \
+referral commission program, it must stick to exactly these facts — do not \
+invent, embellish, or guess any additional details about how these two features \
+work beyond what is listed here):
+
+Lucky Draw / $1 Game:
+- Entry costs $1, paid from the user's deposit balance.
+- Unlimited entries are allowed per user; each entry is a separate ticket.
+- The user's plan gives extra tickets per $1 entry: Basic plan = 1 ticket, Silver \
+plan = 2 tickets, Gold plan = 4 tickets.
+- Each round runs for 7 days.
+- The prize is a fixed $100, regardless of how many people entered.
+- The winner is selected automatically and randomly — there is no manual or admin \
+selection.
+- The winner's $100 is credited to their withdrawable earnings balance.
+- This feature is currently paused by the admin. Do not imply it is actively \
+running or write "join now and win" language — describe it as an available or \
+upcoming platform feature instead.
+
+Referral Commission:
+- Commission is earned ONLY when a referred user subscribes to a paid plan AND \
+the admin approves that subscription request.
+- Commission is NOT earned from a referred user watching ads or completing tasks.
+- The commission percentage depends on the REFERRER's own plan tier: Basic = 5%, \
+Silver = 10%, Gold = 20%.
+- Commission amount = the referred user's plan price multiplied by the \
+referrer's percentage.
+- Do not say commission is earned from deposits or from the referred user simply \
+"staying active" — be precise that it requires a plan subscription approved by \
+the admin.
+
+For any other EarnOmni feature you mention (watching ads, completing tasks, \
+withdrawals, etc.) that isn't covered by PLATFORM_FACTS above, you may describe \
+it at a reasonably general level, as you would for any GPT platform.
+
 Write an SEO-optimized blog article targeting the keyword: "${keyword.keyword}"
 ${keyword.intent ? `Search intent: ${keyword.intent}` : ""}
 
