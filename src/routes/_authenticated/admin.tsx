@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Loader2, ShieldAlert, Users, Wallet, PlayCircle,
@@ -95,6 +103,9 @@ function AdminPanel() {
   const [adBriefsPending, setAdBriefsPending] = useState<any[]>([]);
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryResult, setSummaryResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [selectedAudit, setSelectedAudit] = useState<any | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<any | null>(null);
+  const [selectedBrief, setSelectedBrief] = useState<any | null>(null);
 
   // Ad form
   const [showAdForm, setShowAdForm] = useState(false);
@@ -1634,7 +1645,15 @@ setTaskCompletions(tcEnriched);
                 <tbody>
                   {latestAudits.map((a) => (
                     <tr key={a.id} className="border-t border-border/40 hover:bg-muted/20">
-                      <td className="p-3 max-w-xs truncate">{a.page_url}</td>
+                      <td className="p-3 max-w-xs truncate">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAudit(a)}
+                          className="max-w-full truncate text-left text-primary hover:underline"
+                        >
+                          {a.page_url}
+                        </button>
+                      </td>
                       <td className="p-3 text-red-400">{a.severity_summary?.critical ?? 0}</td>
                       <td className="p-3 text-yellow-400">{a.severity_summary?.warning ?? 0}</td>
                       <td className="p-3 text-emerald-400">{a.severity_summary?.good ?? 0}</td>
@@ -1670,7 +1689,15 @@ setTaskCompletions(tcEnriched);
                 <tbody>
                   {contentDraftsPending.map((d) => (
                     <tr key={d.id} className="border-t border-border/40 hover:bg-muted/20">
-                      <td className="p-3 font-medium max-w-xs truncate">{d.title}</td>
+                      <td className="p-3 font-medium max-w-xs truncate">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDraft(d)}
+                          className="max-w-full truncate text-left text-primary hover:underline"
+                        >
+                          {d.title}
+                        </button>
+                      </td>
                       <td className="p-3 text-xs text-muted-foreground">{d.seo_keywords?.keyword ?? "—"}</td>
                       <td className="p-3"><Badge variant={(d.seo_score ?? 0) >= 70 ? "default" : "secondary"}>{d.seo_score ?? 0}/100</Badge></td>
                       <td className="p-3">{countWords(d.body)}</td>
@@ -1723,7 +1750,15 @@ setTaskCompletions(tcEnriched);
                     <tbody>
                       {rows.map((b: any) => (
                         <tr key={b.id} className="border-t border-border/40 hover:bg-muted/20">
-                          <td className="p-3 text-xs text-muted-foreground">{b.seo_keywords?.keyword ?? b.campaign_data?.keyword ?? "—"}</td>
+                          <td className="p-3 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBrief(b)}
+                              className="text-primary hover:underline"
+                            >
+                              {b.seo_keywords?.keyword ?? b.campaign_data?.keyword ?? "—"}
+                            </button>
+                          </td>
                           <td className="p-3"><Badge variant="secondary">{b.status}</Badge></td>
                           <td className="p-3 text-xs">{new Date(b.created_at).toLocaleDateString()}</td>
                           <td className="p-3">
@@ -1764,6 +1799,205 @@ setTaskCompletions(tcEnriched);
               </p>
             )}
           </Card>
+
+          {/* SEO Audit detail modal */}
+          <Dialog open={!!selectedAudit} onOpenChange={(open) => !open && setSelectedAudit(null)}>
+            <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+              {selectedAudit && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="break-all">{selectedAudit.page_url}</DialogTitle>
+                    <DialogDescription>
+                      Audited {new Date(selectedAudit.audit_date ?? selectedAudit.created_at).toLocaleString()}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-lg bg-red-500/10 p-3 text-center">
+                        <p className="text-lg font-bold text-red-400">{selectedAudit.severity_summary?.critical ?? 0}</p>
+                        <p className="text-xs text-muted-foreground">Critical</p>
+                      </div>
+                      <div className="rounded-lg bg-yellow-500/10 p-3 text-center">
+                        <p className="text-lg font-bold text-yellow-400">{selectedAudit.severity_summary?.warning ?? 0}</p>
+                        <p className="text-xs text-muted-foreground">Warning</p>
+                      </div>
+                      <div className="rounded-lg bg-emerald-500/10 p-3 text-center">
+                        <p className="text-lg font-bold text-emerald-400">{selectedAudit.severity_summary?.good ?? 0}</p>
+                        <p className="text-xs text-muted-foreground">Good</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                        Issues ({(selectedAudit.issues ?? []).length})
+                      </p>
+                      <div className="max-h-80 space-y-2 overflow-y-auto">
+                        {(selectedAudit.issues ?? []).map((issue: any, i: number) => (
+                          <div key={i} className="rounded-lg border border-border/50 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium">{issue.check}</span>
+                              <Badge
+                                variant={
+                                  issue.severity === "critical" ? "destructive"
+                                  : issue.severity === "warning" ? "secondary" : "default"
+                                }
+                              >
+                                {issue.severity}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">{issue.message}</p>
+                          </div>
+                        ))}
+                        {(selectedAudit.issues ?? []).length === 0 && (
+                          <p className="text-sm text-muted-foreground">No issues recorded.</p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Created {new Date(selectedAudit.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Content draft detail modal */}
+          <Dialog open={!!selectedDraft} onOpenChange={(open) => !open && setSelectedDraft(null)}>
+            <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+              {selectedDraft && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>{selectedDraft.title}</DialogTitle>
+                    <DialogDescription>Target keyword: {selectedDraft.seo_keywords?.keyword ?? "—"}</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      <Badge variant={(selectedDraft.seo_score ?? 0) >= 70 ? "default" : "secondary"}>
+                        SEO score: {selectedDraft.seo_score ?? 0}/100
+                      </Badge>
+                      <Badge variant="outline">{countWords(selectedDraft.body)} words</Badge>
+                      <Badge variant="outline">Created {new Date(selectedDraft.created_at).toLocaleDateString()}</Badge>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto rounded-lg border border-border/50 bg-muted/20 p-4">
+                      <p className="whitespace-pre-wrap text-sm">{selectedDraft.body}</p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { updateContentDraftStatus(selectedDraft.id, "rejected"); setSelectedDraft(null); }}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" /> Reject
+                    </Button>
+                    <Button
+                      className="bg-emerald-500 hover:bg-emerald-600"
+                      onClick={() => { updateContentDraftStatus(selectedDraft.id, "approved"); setSelectedDraft(null); }}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" /> Approve for Publishing
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Ad campaign brief detail modal */}
+          <Dialog open={!!selectedBrief} onOpenChange={(open) => !open && setSelectedBrief(null)}>
+            <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+              {selectedBrief && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>{selectedBrief.seo_keywords?.keyword ?? selectedBrief.campaign_data?.keyword ?? "Campaign brief"}</DialogTitle>
+                    <DialogDescription>
+                      <Badge variant="outline" className="capitalize">{String(selectedBrief.platform).replace("_", " ")}</Badge>
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    {selectedBrief.platform === "google_ads" ? (
+                      <>
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">Ad Group</p>
+                          <p className="text-sm">{selectedBrief.campaign_data?.ad_group_name ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Ad Copy Variations</p>
+                          <div className="space-y-2">
+                            {(selectedBrief.campaign_data?.ad_copy_variations ?? []).map((v: any, i: number) => (
+                              <div key={i} className="rounded-lg border border-border/50 p-3">
+                                <p className="text-sm font-medium">{v.headline}</p>
+                                <p className="text-xs text-muted-foreground">{v.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Match Types</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedBrief.campaign_data?.match_types ?? []).map((m: any, i: number) => (
+                              <Badge key={i} variant="outline" title={m.reasoning} className="capitalize">{m.type}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">Daily Budget</p>
+                          <p className="text-sm">
+                            ${selectedBrief.campaign_data?.daily_budget_usd?.min} – ${selectedBrief.campaign_data?.daily_budget_usd?.max}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{selectedBrief.campaign_data?.daily_budget_usd?.reasoning}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">Audience Targeting</p>
+                          <p className="text-sm">
+                            Age {selectedBrief.campaign_data?.audience_targeting?.age_range ?? "—"} ·{" "}
+                            {selectedBrief.campaign_data?.audience_targeting?.geographic_focus ?? "—"}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {(selectedBrief.campaign_data?.audience_targeting?.interests ?? []).map((interest: string, i: number) => (
+                              <Badge key={i} variant="outline">{interest}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Ad Copy Variations</p>
+                          <div className="space-y-2">
+                            {(selectedBrief.campaign_data?.ad_copy_variations ?? []).map((v: any, i: number) => (
+                              <div key={i} className="rounded-lg border border-border/50 p-3">
+                                <p className="text-sm font-medium">{v.headline}</p>
+                                <p className="text-xs text-muted-foreground">{v.primary_text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">Creative Direction</p>
+                          <p className="text-sm text-muted-foreground">{selectedBrief.campaign_data?.creative_direction ?? "—"}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      variant="destructive"
+                      onClick={() => { updateAdBriefStatus(selectedBrief.id, "rejected"); setSelectedBrief(null); }}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" /> Reject
+                    </Button>
+                    <Button
+                      className="bg-emerald-500 hover:bg-emerald-600"
+                      onClick={() => { updateAdBriefStatus(selectedBrief.id, "approved"); setSelectedBrief(null); }}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
