@@ -39,6 +39,49 @@ interface ContentDraftRow {
 
 type DesignPrompts = Record<Platform, string>;
 
+const BRANDING_GUIDELINES = `
+EARNOMNI BRAND SPECIFICATIONS (Use in all social designs):
+
+COLORS - Use exact hex codes:
+- Background: #1B0A17 (Void Indigo - dark, never pure black)
+- Primary Accent: #6570FF (Signal Violet)
+- Secondary Accent: #7C3AED (Deep Amethyst)
+- Text/Foreground: #F3F4FC (high contrast white-ish)
+- Error/Destructive Only: #F52027 (Alert Red - never for accents)
+
+GRADIENTS:
+- Hero Gradient: linear-gradient 135deg from #6570ff to #742ad9
+- Glow Shadow (primary CTA only): box-shadow 0 18px 40px -18px rgba(181, 112, 255, 0.4)
+
+LOGO & BRANDING:
+- Include EarnOmni app icon (E mark in purple/violet, rounded square)
+- Use full lockup with wordmark "EarnOmni" if space allows
+- Logo should be prominent, not small
+
+TYPOGRAPHY:
+- Headlines: Bold, modern sans-serif (Sora-style or similar)
+- Body: Clean, readable sans-serif (system fonts)
+- Ensure high contrast for mobile readability
+- No pure black text - use #F3F4FC on dark backgrounds
+
+UI ELEMENTS:
+- Border radius: 12-24px for rounded corners
+- Primary CTA button: Gradient fill (#6570ff→#742ad9) + glow shadow
+- Secondary buttons: Solid color, no gradient
+- Dark theme: #1B0A17 background, never #000000
+
+DESIGN AESTHETIC:
+- Modern, professional, trustworthy crypto/fintech vibe
+- Crypto theme elements welcome: coins, charts, growth indicators, USDT mentions
+- Clean composition, high contrast
+- Fully-rounded design (no sharp corners)
+
+PLATFORM-SPECIFIC:
+- Instagram (1080x1080): Square format, centered logo, bold text
+- Facebook (1200x628): Landscape, left-text + right-visual split layout
+- Twitter (1600x900): Wide format, bold messaging, quick readability
+`;
+
 // Shared with content-generator's and ads-intelligence's prompts — keep these
 // in sync if the underlying platform mechanics ever change.
 const PLATFORM_FACTS = `PLATFORM_FACTS (whenever a design prompt references the Lucky Draw / $1 \
@@ -90,6 +133,8 @@ function buildPrompt(draft: ContentDraftRow, keyword: string | null): string {
 a USDT-based get-paid-to (GPT) earning platform where users earn crypto by \
 watching ads, completing simple online tasks, and referring friends.
 
+${BRANDING_GUIDELINES}
+
 ${PLATFORM_FACTS}
 
 Do NOT invent fake statistics, fake user counts, fake testimonials, or any other \
@@ -130,6 +175,9 @@ follow-up questions.
 should describe a centered, symmetrical layout; the Facebook and Twitter \
 landscape prompts should describe a layout that uses the wider canvas, such as \
 text on one side and imagery on the other).
+- End with this exact sentence, verbatim: "Apply exact EarnOmni branding from \
+guidelines: use #1B0A17 background, #6570FF accent, include logo, gradient CTA \
+button with glow effect, Sora-style bold headlines, high contrast text #F3F4FC."
 
 Respond with ONLY a single valid JSON object and nothing else - no markdown code \
 fences, no commentary before or after. The JSON object must have exactly these keys:
