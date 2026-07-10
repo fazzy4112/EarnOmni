@@ -71,6 +71,44 @@ const emptyPlanForm: PlanForm = {
 const countWords = (text: string | null | undefined) =>
   text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
 
+// seo-audit 5-tier severity system (critical | warning | good | very_good | excellent).
+const SEVERITY_LEVELS = ["critical", "warning", "good", "very_good", "excellent"] as const;
+type AuditSeverity = (typeof SEVERITY_LEVELS)[number];
+
+const SEVERITY_LABELS: Record<AuditSeverity, string> = {
+  critical: "Critical",
+  warning: "Warning",
+  good: "Good",
+  very_good: "Very Good",
+  excellent: "Excellent",
+};
+
+const SEVERITY_BADGE_CLASSES: Record<AuditSeverity, string> = {
+  critical: "border-red-500/30 bg-red-500/15 text-red-400",
+  warning: "border-orange-500/30 bg-orange-500/15 text-orange-400",
+  good: "border-yellow-500/30 bg-yellow-500/15 text-yellow-400",
+  very_good: "border-lime-500/30 bg-lime-500/15 text-lime-400",
+  excellent: "border-emerald-500/30 bg-emerald-500/15 text-emerald-400",
+};
+
+const severityBadgeClasses = (severity: string) =>
+  SEVERITY_BADGE_CLASSES[severity as AuditSeverity] ?? SEVERITY_BADGE_CLASSES.good;
+
+const severityLabel = (severity: string) => SEVERITY_LABELS[severity as AuditSeverity] ?? severity;
+
+// Maps a page's 0-100 seo-audit score to the same 5-tier color scale.
+const scoreSeverity = (score: number): AuditSeverity =>
+  score <= 40 ? "critical" : score <= 60 ? "warning" : score <= 75 ? "good" : score <= 90 ? "very_good" : "excellent";
+
+const scoreTextClasses = (score: number) => {
+  const tier = scoreSeverity(score);
+  return tier === "critical" ? "text-red-400"
+    : tier === "warning" ? "text-orange-400"
+    : tier === "good" ? "text-yellow-400"
+    : tier === "very_good" ? "text-lime-400"
+    : "text-emerald-400";
+};
+
 function AdminPanel() {
   const { profile, loading } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
@@ -220,10 +258,17 @@ setTaskCompletions(tcEnriched);
       acc.critical += s.critical ?? 0;
       acc.warning += s.warning ?? 0;
       acc.good += s.good ?? 0;
+      acc.very_good += s.very_good ?? 0;
+      acc.excellent += s.excellent ?? 0;
       return acc;
     },
-    { critical: 0, warning: 0, good: 0 },
+    { critical: 0, warning: 0, good: 0, very_good: 0, excellent: 0 },
   );
+  const overallPageScore = seoAudits.length > 0
+    ? Math.round(
+        seoAudits.reduce((sum, a) => sum + Number(a.severity_summary?.score ?? 0), 0) / seoAudits.length,
+      )
+    : 0;
   const latestAudits = seoAudits.slice(0, 5);
   const googleAdsPending = adBriefsPending.filter((b) => b.platform === "google_ads");
   const metaAdsPending = adBriefsPending.filter((b) => b.platform === "meta_ads");
@@ -1617,25 +1662,32 @@ setTaskCompletions(tcEnriched);
               <h3 className="font-semibold">On-Page SEO Audits</h3>
               <p className="text-xs text-muted-foreground">{seoAudits.length} page audit(s) on record</p>
             </div>
-            <div className="grid grid-cols-3 gap-4 p-4 border-b border-border/40">
-              <div className="text-center">
-                <p className="text-xl font-bold text-red-400">{auditSeverityTotals.critical}</p>
-                <p className="text-xs text-muted-foreground">Critical</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xl font-bold text-yellow-400">{auditSeverityTotals.warning}</p>
-                <p className="text-xs text-muted-foreground">Warning</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xl font-bold text-emerald-400">{auditSeverityTotals.good}</p>
-                <p className="text-xs text-muted-foreground">Good</p>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 p-4 border-b border-border/40">
+              <Badge variant="outline" className={severityBadgeClasses("critical")}>
+                Critical ({auditSeverityTotals.critical})
+              </Badge>
+              <Badge variant="outline" className={severityBadgeClasses("warning")}>
+                Warning ({auditSeverityTotals.warning})
+              </Badge>
+              <Badge variant="outline" className={severityBadgeClasses("good")}>
+                Good ({auditSeverityTotals.good})
+              </Badge>
+              <Badge variant="outline" className={severityBadgeClasses("very_good")}>
+                Very Good ({auditSeverityTotals.very_good})
+              </Badge>
+              <Badge variant="outline" className={severityBadgeClasses("excellent")}>
+                Excellent ({auditSeverityTotals.excellent})
+              </Badge>
+              <Badge variant="outline" className={`ml-auto ${severityBadgeClasses(scoreSeverity(overallPageScore))}`}>
+                Overall Page Score: {overallPageScore}/100
+              </Badge>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="p-3">Page URL</th>
+                    <th className="p-3">Score</th>
                     <th className="p-3">Critical</th>
                     <th className="p-3">Warning</th>
                     <th className="p-3">Good</th>
@@ -1654,14 +1706,17 @@ setTaskCompletions(tcEnriched);
                           {a.page_url}
                         </button>
                       </td>
+                      <td className={`p-3 font-semibold ${scoreTextClasses(Number(a.severity_summary?.score ?? 0))}`}>
+                        {a.severity_summary?.score ?? 0}
+                      </td>
                       <td className="p-3 text-red-400">{a.severity_summary?.critical ?? 0}</td>
-                      <td className="p-3 text-yellow-400">{a.severity_summary?.warning ?? 0}</td>
-                      <td className="p-3 text-emerald-400">{a.severity_summary?.good ?? 0}</td>
+                      <td className="p-3 text-orange-400">{a.severity_summary?.warning ?? 0}</td>
+                      <td className="p-3 text-yellow-400">{a.severity_summary?.good ?? 0}</td>
                       <td className="p-3 text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                   {latestAudits.length === 0 && (
-                    <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No audits yet</td></tr>
+                    <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No audits yet</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1812,19 +1867,23 @@ setTaskCompletions(tcEnriched);
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-lg bg-red-500/10 p-3 text-center">
-                        <p className="text-lg font-bold text-red-400">{selectedAudit.severity_summary?.critical ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Critical</p>
-                      </div>
-                      <div className="rounded-lg bg-yellow-500/10 p-3 text-center">
-                        <p className="text-lg font-bold text-yellow-400">{selectedAudit.severity_summary?.warning ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Warning</p>
-                      </div>
-                      <div className="rounded-lg bg-emerald-500/10 p-3 text-center">
-                        <p className="text-lg font-bold text-emerald-400">{selectedAudit.severity_summary?.good ?? 0}</p>
-                        <p className="text-xs text-muted-foreground">Good</p>
-                      </div>
+                    <div
+                      className={`rounded-lg border p-4 text-center ${severityBadgeClasses(
+                        scoreSeverity(Number(selectedAudit.severity_summary?.score ?? 0)),
+                      )}`}
+                    >
+                      <p className="text-3xl font-bold">{selectedAudit.severity_summary?.score ?? 0}/100</p>
+                      <p className="text-xs uppercase tracking-wide opacity-80">
+                        {severityLabel(scoreSeverity(Number(selectedAudit.severity_summary?.score ?? 0)))} — Overall Page Score
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {SEVERITY_LEVELS.map((level) => (
+                        <div key={level} className={`rounded-lg p-3 text-center ${severityBadgeClasses(level)}`}>
+                          <p className="text-lg font-bold">{selectedAudit.severity_summary?.[level] ?? 0}</p>
+                          <p className="text-[10px] uppercase text-muted-foreground">{severityLabel(level)}</p>
+                        </div>
+                      ))}
                     </div>
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
@@ -1835,13 +1894,8 @@ setTaskCompletions(tcEnriched);
                           <div key={i} className="rounded-lg border border-border/50 p-3">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-medium">{issue.check}</span>
-                              <Badge
-                                variant={
-                                  issue.severity === "critical" ? "destructive"
-                                  : issue.severity === "warning" ? "secondary" : "default"
-                                }
-                              >
-                                {issue.severity}
+                              <Badge variant="outline" className={severityBadgeClasses(issue.severity)}>
+                                {severityLabel(issue.severity)}
                               </Badge>
                             </div>
                             <p className="mt-1 text-sm text-muted-foreground">{issue.message}</p>
