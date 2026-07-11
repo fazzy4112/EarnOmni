@@ -376,56 +376,28 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
-  // Task completion actions
+  // Task completion actions — approval/rejection and the reward math both
+  // happen server-side in these RPCs (admin check, row lock, status guard,
+  // completion-count + max_completions check), so the browser never
+  // computes or writes points/balance directly.
   const approveTaskCompletion = async (tc: any) => {
-    // Status update karo
-    await supabase.from("task_completions")
-      .update({ status: "approved" })
-      .eq("id", tc.id);
-
-    // Task ki reward_points seedha database se lo
-    const { data: taskData } = await supabase
-      .from("tasks")
-      .select("reward_points, current_completions")
-      .eq("id", tc.task_id)
-      .single();
-
-    // User profile lo
-    const { data: userProfile } = await supabase
-      .from("profiles")
-      .select("points, balance, plan")
-      .eq("id", tc.user_id)
-      .single();
-
-    if (userProfile && taskData) {
-      const multiplier = userProfile.plan === "gold" ? 4
-        : userProfile.plan === "silver" ? 2 : 1;
-      const pts = taskData.reward_points * multiplier;
-      const newPoints = (userProfile.points ?? 0) + pts;
-      const newBalance = Number(userProfile.balance ?? 0) + pts / 1000;
-
-      await supabase.from("profiles").update({
-        points: newPoints,
-        balance: newBalance,
-      }).eq("id", tc.user_id);
-
-      await supabase.from("task_completions").update({ points_awarded: pts }).eq("id", tc.id);
-
-      // Task completion count update
-      await supabase.from("tasks").update({
-        current_completions: (taskData.current_completions ?? 0) + 1,
-      }).eq("id", tc.task_id);
-
-      toast.success(`✅ Approved! +${pts} points awarded to user!`);
+    const { error } = await supabase.rpc("admin_approve_task_completion", { p_completion_id: tc.id });
+    if (error) {
+      toast.error(error.message);
     } else {
-      toast.success("✅ Task approved!");
+      toast.success("✅ Task approved & points awarded!");
     }
     loadAll();
   };
 
   const rejectTaskCompletion = async (id: string) => {
-    await supabase.from("task_completions").update({ status: "rejected" }).eq("id", id);
-    toast.success("Task rejected!"); loadAll();
+    const { error } = await supabase.rpc("admin_reject_task_completion", { p_completion_id: id });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Task rejected!");
+    }
+    loadAll();
   };
 
   // Save settings
