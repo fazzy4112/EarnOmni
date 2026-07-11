@@ -208,6 +208,16 @@ function describeAnthropicError(error: unknown): string {
   if (error instanceof Error) {
     return `Anthropic API call failed: ${error.message}`;
   }
+  // Some SDK/network failure paths reject with a plain object shaped like
+  // { error: { message, type } } instead of an Error/APIError instance —
+  // guard for that shape explicitly rather than reading `.error` off it
+  // unchecked further downstream.
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const nested = (error as Record<string, unknown>).error;
+    if (typeof nested === "object" && nested !== null && "message" in nested) {
+      return `Anthropic API call failed: ${String((nested as Record<string, unknown>).message)}`;
+    }
+  }
   return `Anthropic API call failed: ${String(error)}`;
 }
 
@@ -243,6 +253,10 @@ async function generateDesignPrompts(
     });
   } catch (error) {
     throw new Error(describeAnthropicError(error));
+  }
+
+  if (!response || !Array.isArray(response.content)) {
+    throw new Error("Anthropic API returned an unexpected response shape");
   }
 
   const textBlock = response.content.find((block) => block.type === "text");
