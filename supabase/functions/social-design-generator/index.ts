@@ -364,16 +364,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        contentProcessed: (drafts ?? []).length,
-        promptsGenerated,
-        results,
-        failures,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
-    );
+    const contentProcessed = (drafts ?? []).length;
+
+    try {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          contentProcessed,
+          promptsGenerated,
+          results,
+          failures,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+      );
+    } catch (responseError) {
+      console.error("social-design-generator failed to build the response:", responseError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Response formatting failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
+      );
+    }
   } catch (error) {
     console.error("social-design-generator function error:", error);
     return new Response(
