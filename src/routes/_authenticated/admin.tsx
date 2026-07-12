@@ -375,59 +375,18 @@ setTaskCompletions(tcEnriched);
     toast.success(is_active ? "User blocked!" : "User unblocked!"); loadAll();
   };
 
-  // Subscription actions
+  // Subscription actions — activation, plan assignment, and referral
+  // commission (computed from the authoritative plans.price_usd, not the
+  // user-supplied subscriptions row) all happen atomically server-side.
   const activateSubscription = async (sub: any) => {
-    await supabase.from("subscriptions").update({ is_active: true }).eq("id", sub.id);
-    await supabase.from("profiles").update({ plan: sub.plan_name }).eq("id", sub.user_id);
-
-    // Referral commission — paid here because this is real revenue
-    // (a plan purchase), unlike everyday ad/task earnings which are a
-    // platform cost, not income to share.
-    const { data: referredProfile } = await supabase
-      .from("profiles")
-      .select("referred_by")
-      .eq("id", sub.user_id)
-      .single();
-
-    if (referredProfile?.referred_by) {
-      const { data: referrer } = await supabase
-        .from("profiles")
-        .select("id, plan, balance")
-        .eq("referral_code", referredProfile.referred_by)
-        .single();
-
-      if (referrer) {
-        const { data: platformSettings } = await supabase
-          .from("platform_settings")
-          .select("referral_commission_basic, referral_commission_silver, referral_commission_gold")
-          .eq("id", 1)
-          .single();
-        const commissionPercent =
-          referrer.plan === "gold" ? (platformSettings?.referral_commission_gold ?? 20)
-          : referrer.plan === "silver" ? (platformSettings?.referral_commission_silver ?? 10)
-          : (platformSettings?.referral_commission_basic ?? 5);
-        const commissionAmount = Number(((sub.price_usd ?? 0) * commissionPercent) / 100);
-
-        if (commissionAmount > 0) {
-          await supabase.from("profiles").update({
-            balance: Number(referrer.balance ?? 0) + commissionAmount,
-          }).eq("id", referrer.id);
-          await supabase.from("referrals").insert({
-            referrer_id: referrer.id,
-            referred_id: sub.user_id,
-            commission_amount: commissionAmount,
-            commission_percent: commissionPercent,
-            source: "plan_subscription",
-          });
-        }
-      }
-    }
-
-    toast.success(`${sub.plan_name} plan activated!`); loadAll();
+    const { error } = await supabase.rpc("admin_approve_subscription", { p_subscription_id: sub.id });
+    if (error) { toast.error(error.message); } else { toast.success(`${sub.plan_name} plan activated!`); }
+    loadAll();
   };
   const rejectSubscription = async (sub: any) => {
-    await supabase.from("subscriptions").delete().eq("id", sub.id);
-    toast.success("Rejected!"); loadAll();
+    const { error } = await supabase.rpc("admin_reject_subscription", { p_subscription_id: sub.id });
+    if (error) { toast.error(error.message); } else { toast.success("Subscription rejected."); }
+    loadAll();
   };
 
   // Manual plan change — for support/bug-fix cases, independent of the
@@ -469,56 +428,28 @@ setTaskCompletions(tcEnriched);
     loadAll();
   };
 
-  // Task completion actions
+  // Task completion actions — approval/rejection and the reward math both
+  // happen server-side in these RPCs (admin check, row lock, status guard,
+  // completion-count + max_completions check), so the browser never
+  // computes or writes points/balance directly.
   const approveTaskCompletion = async (tc: any) => {
-    // Status update karo
-    await supabase.from("task_completions")
-      .update({ status: "approved" })
-      .eq("id", tc.id);
-
-    // Task ki reward_points seedha database se lo
-    const { data: taskData } = await supabase
-      .from("tasks")
-      .select("reward_points, current_completions")
-      .eq("id", tc.task_id)
-      .single();
-
-    // User profile lo
-    const { data: userProfile } = await supabase
-      .from("profiles")
-      .select("points, balance, plan")
-      .eq("id", tc.user_id)
-      .single();
-
-    if (userProfile && taskData) {
-      const multiplier = userProfile.plan === "gold" ? 4
-        : userProfile.plan === "silver" ? 2 : 1;
-      const pts = taskData.reward_points * multiplier;
-      const newPoints = (userProfile.points ?? 0) + pts;
-      const newBalance = Number(userProfile.balance ?? 0) + pts / 1000;
-
-      await supabase.from("profiles").update({
-        points: newPoints,
-        balance: newBalance,
-      }).eq("id", tc.user_id);
-
-      await supabase.from("task_completions").update({ points_awarded: pts }).eq("id", tc.id);
-
-      // Task completion count update
-      await supabase.from("tasks").update({
-        current_completions: (taskData.current_completions ?? 0) + 1,
-      }).eq("id", tc.task_id);
-
-      toast.success(`✅ Approved! +${pts} points awarded to user!`);
+    const { error } = await supabase.rpc("admin_approve_task_completion", { p_completion_id: tc.id });
+    if (error) {
+      toast.error(error.message);
     } else {
-      toast.success("✅ Task approved!");
+      toast.success("✅ Task approved & points awarded!");
     }
     loadAll();
   };
 
   const rejectTaskCompletion = async (id: string) => {
-    await supabase.from("task_completions").update({ status: "rejected" }).eq("id", id);
-    toast.success("Task rejected!"); loadAll();
+    const { error } = await supabase.rpc("admin_reject_task_completion", { p_completion_id: id });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Task rejected!");
+    }
+    loadAll();
   };
 
   // Save settings

@@ -220,27 +220,14 @@ function WatchAdsPage() {
 
   const claim = async () => {
     if (!activeAd || !user || remaining > 0) return;
-    const pts = activeAd.reward_points * multiplier;
 
-    const { error } = await supabase.from("ad_views").insert({
-      user_id: user.id,
-      ad_id: activeAd.id,
-      points_earned: pts,
-    });
+    // Reward calculation, the one-per-ad-per-day guard, the daily cap, the
+    // ad_views insert, and the profiles.points/balance credit all happen
+    // atomically server-side in this RPC.
+    const { data: awarded, error } = await supabase.rpc("claim_ad_view_reward", { p_ad_id: activeAd.id });
     if (error) { toast.error(error.message); return; }
 
-    const newPoints = (profile?.points ?? 0) + pts;
-    const newBalance = Number(profile?.balance ?? 0) + pts / 1000;
-    await supabase.from("profiles")
-      .update({ points: newPoints, balance: newBalance })
-      .eq("id", user.id);
-
-    // Note: referral commission is NOT paid on ad-watching earnings —
-    // watching ads is a platform expense, not revenue. Commission is
-    // only paid from a share of real revenue (plan subscriptions,
-    // deposits), credited when those events happen instead.
-
-    toast.success(`🎉 +${pts} points earned!`);
+    toast.success(`🎉 +${awarded} points earned!`);
     setActiveAd(null);
     setVideoStarted(false);
     refreshProfile();
