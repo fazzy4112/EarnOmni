@@ -1,7 +1,6 @@
 import {
   performFraudCheck,
   saveVerificationLog,
-  processTaskVerification,
 } from "@/lib/fraud-detection";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -120,37 +119,19 @@ function TasksPage() {
           return;
         }
   
-        // Save verification log
+        // Save verification log (kept as a record for admins — the fraud
+        // score no longer drives any auto-credit decision client-side).
         await saveVerificationLog(
           insertedCompletion.id,
           fraudResult,
           task.task_type
         );
-  
-        // Process verification (auto-approve/reject)
-        await processTaskVerification(
-          insertedCompletion.id,
-          user.id,
-          fraudResult
-        );
-  
-        // Show appropriate message
-        if (fraudResult.decision === "auto_approve") {
-          toast.success(
-            `✅ AUTO-APPROVED! +${fraudResult.details.deviceCheck * 2} points awarded instantly! (Score: ${fraudResult.fraudScore}/100)`
-          );
-        } else if (fraudResult.decision === "manual_review") {
-          toast.info(
-            `⏳ Submitted for review! Admin will verify within 24 hours. (Fraud Score: ${fraudResult.fraudScore}/100)`
-          );
-        } else {
-          toast.error(
-            `❌ Flagged as suspicious (Score: ${fraudResult.fraudScore}/100). ${
-              fraudResult.details.flaggedReasons[0] || "Try another task"
-            }`
-          );
-        }
-  
+
+        // Rewards are only credited via admin approval (server-side RPC) —
+        // no auto-credit here, so every submission gets the same honest
+        // "pending review" message regardless of fraudResult.decision.
+        toast.success("✅ Task submitted! It will be reviewed and your reward credited after admin approval.");
+
         qc.invalidateQueries({ queryKey: ["task_completions"] });
       } catch (error) {
         console.error(error);
