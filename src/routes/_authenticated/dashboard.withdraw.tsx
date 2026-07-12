@@ -64,17 +64,12 @@ function WithdrawPage() {
     if (!wallet.startsWith("0x")) return toast.error("BEP20 address must start with 0x");
 
     setLoading(true);
-    const { error } = await supabase.from("withdrawals").insert({
-      user_id: user.id,
-      amount: amt,
-      payment_method: "USDT-BEP20",
-      wallet_address: wallet,
+    const { error } = await supabase.rpc("request_withdrawal", {
+      p_amount: amt,
+      p_payment_method: "USDT-BEP20",
+      p_wallet_address: wallet,
     });
     if (error) { toast.error(error.message); setLoading(false); return; }
-
-    await supabase.from("profiles")
-      .update({ balance: Number(profile?.balance ?? 0) - amt })
-      .eq("id", user.id);
 
     toast.success("✅ Withdrawal request submitted! Processing within 24-48 hours.");
     setAmount("");

@@ -371,7 +371,8 @@ setTaskCompletions(tcEnriched);
 
   // User actions
   const toggleUserBlock = async (id: string, is_active: boolean) => {
-    await supabase.from("profiles").update({ is_active: !is_active }).eq("id", id);
+    const { error } = await supabase.rpc("admin_set_user_active", { p_user_id: id, p_is_active: !is_active });
+    if (error) { toast.error(error.message); return; }
     toast.success(is_active ? "User blocked!" : "User unblocked!"); loadAll();
   };
 
@@ -417,11 +418,10 @@ setTaskCompletions(tcEnriched);
     });
     if (insertError) { toast.error(insertError.message); return; }
 
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ plan: plan.name })
-      .eq("id", userId)
-      .select();
+    const { error: profileError } = await supabase.rpc("admin_set_user_plan", {
+      p_user_id: userId,
+      p_plan_name: plan.name,
+    });
     if (profileError) { toast.error(profileError.message); return; }
 
     toast.success(`Plan manually changed to ${plan.label || plan.name}`);
