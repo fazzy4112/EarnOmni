@@ -24,11 +24,7 @@ function ReferralsPage() {
     queryKey: ["referred_users", profile?.referral_code],
     enabled: !!profile?.referral_code,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, user_number, created_at, email_confirmed")
-        .eq("referred_by", profile!.referral_code)
-        .order("created_at", { ascending: false });
+      const { data } = await supabase.rpc("get_my_referred_users");
       return data ?? [];
     },
   });
@@ -132,7 +128,7 @@ function ReferralsPage() {
             >
               <div>
                 <p className="text-sm font-medium">
-                  {r.full_name || r.email}
+                  {r.full_name || `UID-${r.user_number}`}
                   {!r.email_confirmed && (
                     <span className="ml-2 rounded-full bg-yellow-500/20 px-2 py-0.5 text-xs font-normal text-yellow-500">
                       Pending confirmation

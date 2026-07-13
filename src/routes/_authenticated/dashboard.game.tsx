@@ -100,10 +100,7 @@ function GamePage() {
         .limit(5);
       if (!rounds?.length) return [];
       const winnerIds = rounds.map((r) => r.winner_user_id).filter(Boolean);
-      const { data: winners } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, user_number")
-        .in("id", winnerIds as string[]);
+      const { data: winners } = await supabase.rpc("get_public_profiles", { p_user_ids: winnerIds as string[] });
       return rounds.map((r) => ({
         ...r,
         winner: winners?.find((w) => w.id === r.winner_user_id),
@@ -150,9 +147,8 @@ function GamePage() {
   const entryFee = Number(round?.entry_fee ?? 1);
   const canEnter = depositBalance >= entryFee && !countdown?.isOver;
 
-  const maskedName = (name: string | null | undefined, email: string | null | undefined) => {
+  const maskedName = (name: string | null | undefined) => {
     if (name && name.trim()) return name;
-    if (email) return email.slice(0, 3) + "***";
     return "A lucky winner";
   };
 
@@ -299,7 +295,7 @@ function GamePage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium">
-                    {maskedName(r.winner?.full_name, r.winner?.email)}
+                    {maskedName(r.winner?.full_name)}
                     {r.winner?.user_number && (
                       <span className="ml-1.5 text-xs font-normal text-muted-foreground">(UID-{r.winner.user_number})</span>
                     )}
