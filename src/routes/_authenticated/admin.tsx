@@ -274,11 +274,19 @@ setTaskCompletions(tcEnriched);
   const metaAdsPending = adBriefsPending.filter((b) => b.platform === "meta_ads");
   const pendingGrowthItems = contentDraftsPending.length + adBriefsPending.length;
 
-  // Withdrawal actions
-  const updateWithdrawal = async (id: string, status: "approved" | "rejected") => {
-    const { error } = await supabase.from("withdrawals").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success(`Withdrawal ${status}!`);
+  // Withdrawal actions — approval and rejection (with atomic balance
+  // refund) both happen server-side with an idempotency guard.
+  const approveWithdrawal = async (id: string) => {
+    const { error } = await supabase.rpc("admin_approve_withdrawal", { p_withdrawal_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Withdrawal approved!");
+    loadAll();
+  };
+
+  const rejectWithdrawal = async (id: string) => {
+    const { error } = await supabase.rpc("admin_reject_withdrawal", { p_withdrawal_id: id });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Withdrawal rejected & balance refunded.");
     loadAll();
   };
 
@@ -660,8 +668,8 @@ setTaskCompletions(tcEnriched);
                   <div key={w.id} className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">${Number(w.amount).toFixed(2)}</span>
                     <div className="flex gap-1">
-                      <Button size="sm" className="h-6 text-xs bg-emerald-500" onClick={() => updateWithdrawal(w.id, "approved")}><Check className="h-3 w-3" /></Button>
-                      <Button size="sm" variant="destructive" className="h-6 text-xs" onClick={() => updateWithdrawal(w.id, "rejected")}><X className="h-3 w-3" /></Button>
+                      <Button size="sm" className="h-6 text-xs bg-emerald-500" onClick={() => approveWithdrawal(w.id)}><Check className="h-3 w-3" /></Button>
+                      <Button size="sm" variant="destructive" className="h-6 text-xs" onClick={() => rejectWithdrawal(w.id)}><X className="h-3 w-3" /></Button>
                     </div>
                   </div>
                 ))}
@@ -767,8 +775,8 @@ setTaskCompletions(tcEnriched);
                     <td className="p-3">
                       {w.status === "pending" && (
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-emerald-500" onClick={() => updateWithdrawal(w.id, "approved")}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
-                          <Button size="sm" variant="destructive" onClick={() => updateWithdrawal(w.id, "rejected")}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+                          <Button size="sm" className="bg-emerald-500" onClick={() => approveWithdrawal(w.id)}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectWithdrawal(w.id)}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
                         </div>
                       )}
                     </td>
