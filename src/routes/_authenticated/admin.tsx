@@ -424,6 +424,17 @@ setTaskCompletions(tcEnriched);
     setShowTaskForm(false);
     loadAll();
   };
+  const deleteTask = async (task: any) => {
+    const hasCompletions = (task.current_completions ?? 0) > 0;
+    const message = hasCompletions
+      ? `This task has ${task.current_completions} completion(s). Deleting it will also delete those completion records (users' already-credited points/balance are NOT affected — only the history record). Are you sure?`
+      : "Delete this task permanently?";
+    if (!window.confirm(message)) return;
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Task deleted.");
+    loadAll();
+  };
 
   // User actions
   const toggleUserBlock = async (id: string, is_active: boolean) => {
@@ -1345,6 +1356,9 @@ setTaskCompletions(tcEnriched);
                           )}
                           <Button size="sm" variant="outline" className="text-xs" onClick={() => openEditTask(t)}>
                             <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="destructive" className="text-xs" onClick={() => deleteTask(t)}>
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="sm" variant="ghost" className="text-xs" onClick={() => window.open(t.task_url, "_blank")}>
                             <ExternalLink className="h-3.5 w-3.5" />
