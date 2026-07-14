@@ -55,6 +55,16 @@ interface PlanForm {
   sort_order: number;
 }
 
+interface TaskForm {
+  title: string;
+  description: string;
+  task_url: string;
+  task_type: string;
+  reward_points: number;
+  max_completions: number;
+  thumbnail_url: string;
+}
+
 const emptyAdForm: AdForm = {
   title: "", description: "", ad_type: "youtube",
   ad_url: "", banner_image_url: "", click_url: "",
@@ -65,6 +75,11 @@ const emptyPlanForm: PlanForm = {
   name: "", label: "", price_usd: 0, multiplier: 1,
   duration_days: 0, features: "", is_active: true,
   is_popular: false, sort_order: 0,
+};
+
+const emptyTaskForm: TaskForm = {
+  title: "", description: "", task_url: "", task_type: "link_visit",
+  reward_points: 100, max_completions: 100, thumbnail_url: "",
 };
 
 // content_drafts has no word_count column — derive it from the body text.
@@ -156,6 +171,11 @@ function AdminPanel() {
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [planForm, setPlanForm] = useState<PlanForm>(emptyPlanForm);
   const [savingPlan, setSavingPlan] = useState(false);
+
+  // Task form
+  const [taskForm, setTaskForm] = useState<TaskForm>(emptyTaskForm);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [showTaskForm, setShowTaskForm] = useState(false);
 
   // Settings
   const [settingsForm, setSettingsForm] = useState({
@@ -374,6 +394,34 @@ setTaskCompletions(tcEnriched);
   };
   const togglePlan = async (id: string, is_active: boolean) => {
     await supabase.from("plans").update({ is_active: !is_active }).eq("id", id);
+    loadAll();
+  };
+
+  const openNewTask = () => { setTaskForm(emptyTaskForm); setEditingTask(null); setShowTaskForm(true); };
+  const openEditTask = (task: any) => {
+    setTaskForm({
+      title: task.title ?? "", description: task.description ?? "",
+      task_url: task.task_url ?? "", task_type: task.task_type ?? "link_visit",
+      reward_points: task.reward_points ?? 100, max_completions: task.max_completions ?? 100,
+      thumbnail_url: task.thumbnail_url ?? "",
+    });
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+  const saveTask = async () => {
+    if (!taskForm.title.trim() || !taskForm.task_url.trim()) {
+      toast.error("Title and URL are required.");
+      return;
+    }
+    const payload = editingTask
+      ? { ...taskForm }
+      : { ...taskForm, status: "approved", is_active: true };
+    const { error } = editingTask
+      ? await supabase.from("tasks").update(payload).eq("id", editingTask.id)
+      : await supabase.from("tasks").insert(payload);
+    if (error) { toast.error(error.message); return; }
+    toast.success(editingTask ? "Task updated!" : "Task created!");
+    setShowTaskForm(false);
     loadAll();
   };
 
@@ -1155,10 +1203,52 @@ setTaskCompletions(tcEnriched);
       {tab === "tasks_management" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => toast.info("Create new task on Investor Tasks page")} className="bg-emerald-500 hover:bg-emerald-600">
-              <Plus className="h-4 w-4 mr-2" /> View Pending Tasks
+            <Button onClick={openNewTask} className="bg-emerald-500 hover:bg-emerald-600">
+              <Plus className="h-4 w-4 mr-2" /> Create Task
             </Button>
           </div>
+          {showTaskForm && (
+            <Card className="border-emerald-500/30 bg-card/80 p-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2"><Briefcase className="h-5 w-5 text-yellow-400" />{editingTask ? "Edit Task" : "Create New Task"}</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Label>Title *</Label>
+                  <Input placeholder="e.g. Subscribe to our YouTube channel" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Description</Label>
+                  <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-24 resize-none" placeholder="What the user needs to do" value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Task URL *</Label>
+                  <Input placeholder="https://..." value={taskForm.task_url} onChange={(e) => setTaskForm({ ...taskForm, task_url: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Task Type</Label>
+                  <Input placeholder="e.g. link_visit, youtube_subscribe, social_follow" value={taskForm.task_type} onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Reward Points</Label>
+                  <Input type="number" min="0" value={taskForm.reward_points} onChange={(e) => setTaskForm({ ...taskForm, reward_points: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>Max Completions</Label>
+                  <Input type="number" min="1" value={taskForm.max_completions} onChange={(e) => setTaskForm({ ...taskForm, max_completions: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>Thumbnail URL</Label>
+                  <Input placeholder="https://..." value={taskForm.thumbnail_url} onChange={(e) => setTaskForm({ ...taskForm, thumbnail_url: e.target.value })} />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-3">
+                <Button onClick={saveTask} className="bg-emerald-500 hover:bg-emerald-600">
+                  <Check className="h-4 w-4 mr-2" />
+                  {editingTask ? "Save Changes" : "Create Task"}
+                </Button>
+                <Button variant="outline" onClick={() => setShowTaskForm(false)}>Cancel</Button>
+              </div>
+            </Card>
+          )}
           <Card className="overflow-hidden border-border/50 bg-card/80">
             <div className="p-4 border-b border-border/40">
               <h3 className="font-semibold">Investor Tasks Management</h3>
@@ -1253,6 +1343,9 @@ setTaskCompletions(tcEnriched);
                               {t.is_active ? "Pause" : "Activate"}
                             </Button>
                           )}
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => openEditTask(t)}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
                           <Button size="sm" variant="ghost" className="text-xs" onClick={() => window.open(t.task_url, "_blank")}>
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
