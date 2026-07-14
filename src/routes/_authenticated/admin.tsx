@@ -278,9 +278,7 @@ setTaskCompletions(tcEnriched);
 
   // User actions
   const toggleUserBlock = async (id: string, is_active: boolean) => {
-    const { error } = await supabase.functions.invoke("admin-toggle-user-block", {
-      body: { user_id: id, block: is_active },
-    });
+    const { error } = await supabase.rpc("admin_set_user_banned", { p_user_id: id, p_banned: is_active });
     if (error) { toast.error(error.message); return; }
     toast.success(is_active ? "User blocked!" : "User unblocked!"); loadAll();
   };
