@@ -317,11 +317,25 @@ Deno.serve(async (req) => {
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: { user: caller } } = await supabase.auth.getUser(token);
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const { data: callerProfile } = await supabase.from("profiles").select("is_admin").eq("id", caller.id).single();
+    if (!callerProfile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Not authorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 });
+    }
+
     let batchSize = DEFAULT_BATCH_SIZE;
     if (req.method === "POST") {
       try {
         const body = await req.json();
-        if (typeof body?.limit === "number" && body.limit > 0) batchSize = Math.floor(body.limit);
+        if (typeof body?.limit === "number" && body.limit > 0) batchSize = Math.min(Math.floor(body.limit), 10);
       } catch {
         // No/invalid JSON body — fall back to the default batch size.
       }
