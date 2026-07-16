@@ -8,6 +8,7 @@ export const Route = createFileRoute("/privacy")({
       { title: "Privacy Policy — EarnOmni" },
       { name: "description", content: "Privacy Policy for EarnOmni, explaining what data we collect and how it's used." },
     ],
+    links: [{ rel: "canonical", href: "https://earnomni.com/privacy" }],
   }),
   component: PrivacyPage,
 });
