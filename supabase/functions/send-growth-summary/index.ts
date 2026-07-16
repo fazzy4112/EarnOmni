@@ -299,14 +299,18 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    let recipientOverride: string | null = null;
-    if (req.method === "POST") {
-      try {
-        const body = await req.json();
-        if (typeof body?.to === "string" && body.to.trim()) recipientOverride = body.to.trim();
-      } catch {
-        // No/invalid JSON body — fall back to the admin's profile email.
-      }
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: { user: caller } } = await supabase.auth.getUser(token);
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const { data: callerProfile } = await supabase.from("profiles").select("is_admin").eq("id", caller.id).single();
+    if (!callerProfile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Not authorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 });
     }
 
     const [research, audits, content, ads] = await Promise.all([
@@ -324,14 +328,14 @@ Deno.serve(async (req) => {
       generatedAt: new Date().toUTCString(),
     };
 
-    const recipient = recipientOverride ?? (await fetchAdminEmail(supabase));
+    const recipient = await fetchAdminEmail(supabase);
     const html = buildEmailHtml(summary);
     const { id } = await sendViaResend(resendApiKey, recipient, html);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Email sent to ${recipient}`,
+        message: "Email sent",
         emailId: id,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },

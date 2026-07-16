@@ -143,9 +143,6 @@ function AdminPanel() {
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [gameRounds, setGameRounds] = useState<any[]>([]);
-  const [creditUserId, setCreditUserId] = useState("");
-  const [creditAmount, setCreditAmount] = useState(10);
-  const [crediting, setCrediting] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [deposits, setDeposits] = useState<any[]>([]);
 
@@ -535,19 +532,6 @@ setTaskCompletions(tcEnriched);
     setSavingSettings(false);
     if (error) { toast.error(error.message); return; }
     toast.success("✅ Settings saved!"); loadAll();
-  };
-
-  const handleCreditDeposit = async () => {
-    if (!creditUserId || creditAmount <= 0) { toast.error("Pick a user and a valid amount"); return; }
-    setCrediting(true);
-    const { error } = await supabase.rpc("admin_credit_deposit_balance", {
-      p_user_id: creditUserId,
-      p_amount: creditAmount,
-    });
-    setCrediting(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Credited $${creditAmount} test deposit balance`);
-    loadAll();
   };
 
   const [togglingGame, setTogglingGame] = useState(false);
@@ -1568,45 +1552,6 @@ setTaskCompletions(tcEnriched);
               <Button onClick={handleToggleGame} disabled={togglingGame} variant={settings?.game_enabled ? "destructive" : "default"}>
                 {togglingGame && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {settings?.game_enabled ? "Pause Game" : "Start Game"}
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="border-yellow-500/40 bg-yellow-500/10 p-4">
-            <p className="flex items-center gap-2 text-sm font-medium text-yellow-500">
-              <Info className="h-4 w-4" /> Temporary testing tool
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Deposits aren't live yet. Use this to credit a user's deposit balance for testing the $1 Game.
-              Remove this once the real payment gateway is connected.
-            </p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <Label>User</Label>
-                <select
-                  className="mt-1 w-full rounded-lg border border-border bg-input px-3 py-2 text-sm"
-                  value={creditUserId}
-                  onChange={(e) => setCreditUserId(e.target.value)}
-                >
-                  <option value="">Select a user…</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>UID-{u.user_number} — {u.full_name || u.email} ({u.email})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>Amount (USD)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={creditAmount}
-                  onChange={(e) => setCreditAmount(Number(e.target.value))}
-                  className="mt-1 w-32"
-                />
-              </div>
-              <Button onClick={handleCreditDeposit} disabled={crediting}>
-                {crediting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Credit balance
               </Button>
             </div>
           </Card>

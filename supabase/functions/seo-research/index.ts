@@ -249,6 +249,20 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { data: { user: caller } } = await supabase.auth.getUser(token);
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
+    }
+    const { data: callerProfile } = await supabase.from("profiles").select("is_admin").eq("id", caller.id).single();
+    if (!callerProfile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Not authorized" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 });
+    }
+
     const { startDate, endDate } = getReportDateRange();
     const accessToken = await getAccessToken(serviceAccount);
     const rows = await fetchSearchAnalytics(accessToken, startDate, endDate);
