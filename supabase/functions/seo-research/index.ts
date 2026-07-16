@@ -271,19 +271,14 @@ Deno.serve(async (req) => {
 
     let savedCount = 0;
     if (records.length > 0) {
-      const keywords = records.map((record) => record.keyword);
-
-      const { error: deleteError } = await supabase
+      const { error: upsertError, count } = await supabase
         .from("seo_keywords")
-        .delete()
-        .eq("target_country", DEFAULT_TARGET_COUNTRY)
-        .in("keyword", keywords);
-      if (deleteError) throw new Error(`Failed to clear stale seo_keywords rows: ${deleteError.message}`);
-
-      const { error: insertError, count } = await supabase
-        .from("seo_keywords")
-        .insert(records, { count: "exact" });
-      if (insertError) throw new Error(`Failed to insert seo_keywords rows: ${insertError.message}`);
+        .upsert(records, {
+          onConflict: "keyword,target_country",
+          ignoreDuplicates: false,
+          count: "exact",
+        });
+      if (upsertError) throw new Error(`Failed to upsert seo_keywords rows: ${upsertError.message}`);
       savedCount = count ?? records.length;
     }
 
