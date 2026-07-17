@@ -8,6 +8,7 @@ export const Route = createFileRoute("/terms")({
       { title: "Terms of Service — EarnOmni" },
       { name: "description", content: "Terms of Service for EarnOmni, a task-completion and ad-watching earning platform operated by i5Digital Hub LLC." },
     ],
+    links: [{ rel: "canonical", href: "https://earnomni.com/terms" }],
   }),
   component: TermsPage,
 });

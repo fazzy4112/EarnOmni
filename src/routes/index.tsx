@@ -20,6 +20,7 @@ export const Route = createFileRoute("/")({
       { title: "EarnOmni — Complete Tasks & Earn Real Money in USDT" },
       { name: "description", content: "Join 10,000+ users earning real USDT by completing simple online tasks — watch ads, refer friends, and cash out fast. Free to start, no experience needed." },
     ],
+    links: [{ rel: "canonical", href: "https://earnomni.com/" }],
   }),
   component: Index,
 });

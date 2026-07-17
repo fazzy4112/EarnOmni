@@ -33,6 +33,7 @@ export const Route = createFileRoute("/about")({
           "Learn about EarnOmni, a task-completion earning platform that pays real USDT for watching ads, completing tasks, and referring friends. Built by i5Digital Hub LLC.",
       },
     ],
+    links: [{ rel: "canonical", href: "https://earnomni.com/about" }],
   }),
   component: AboutPage,
 });
