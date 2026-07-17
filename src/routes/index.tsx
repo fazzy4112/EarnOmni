@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "EarnOmni — Complete Tasks & Earn Real Money in USDT" },
-      { name: "description", content: "Join 10,000+ users earning real USDT by completing simple online tasks — watch ads, refer friends, and cash out fast. Free to start, no experience needed." },
+      { name: "description", content: "Earn real USDT by watching ads, completing simple tasks, and referring friends. Transparent rate: 1000 points = $1. Withdraw from $10 to your BEP20 wallet." },
     ],
   }),
   component: Index,
@@ -64,6 +64,7 @@ function Index() {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</a>
             <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</a>
             <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground">About</Link>
+            <Link to="/advertisers" className="text-sm text-muted-foreground hover:text-foreground">Advertisers</Link>
           </nav>
           <div className="hidden items-center gap-3 md:flex">
             <Link to="/auth"><Button variant="ghost" size="sm">Sign in</Button></Link>
@@ -86,6 +87,7 @@ function Index() {
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Features</a>
             <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">FAQ</a>
             <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">About</Link>
+            <Link to="/advertisers" onClick={() => setMobileMenuOpen(false)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">Advertisers</Link>
             <div className="mt-2 flex flex-col gap-2 border-t border-border/40 pt-3">
               <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="outline" size="sm" className="w-full">Sign in</Button>
@@ -107,7 +109,7 @@ function Index() {
           <div className="relative">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 text-xs text-muted-foreground">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-              Live payouts — over $50,000 distributed
+              Now live — withdraw USDT from $10, no lock-in
             </div>
             <h1 className="font-display text-5xl font-bold leading-tight tracking-tight md:text-6xl">
               Watch Ads, Complete Tasks,{" "}
@@ -129,9 +131,9 @@ function Index() {
               </a>
             </div>
             <div className="mt-12 grid grid-cols-3 gap-6 border-t border-border/50 pt-8">
-              <Stat label="Users" value="10,000+" />
-              <Stat label="Paid Out" value="$50K+" />
-              <Stat label="Uptime" value="99.9%" />
+              <Stat label="Min. Withdrawal" value="$10" />
+              <Stat label="Max Multiplier" value="4x" />
+              <Stat label="Referral Commission" value="20%" />
             </div>
           </div>
           <div className="relative">
@@ -248,10 +250,10 @@ function Index() {
           </div>
           <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[
-              { icon: ShieldCheck, title: "Anti-fraud system", desc: "Smart detection blocks bots so real users get paid." },
+              { icon: ShieldCheck, title: "Reviewed payouts", desc: "Every task submission is reviewed before points are credited." },
               { icon: Users, title: "Referral rewards", desc: "Earn lifetime commission on every friend you invite." },
               { icon: Wallet, title: "Crypto withdrawal", desc: "Withdraw to USDT on BEP20 (BNB Smart Chain) network." },
-              { icon: Crown, title: "Investor tasks", desc: "Premium tasks from verified advertisers pay even more." },
+              { icon: Crown, title: "Lifetime plans", desc: "One-time payment, no subscriptions — up to 4x on every earning." },
             ].map((f) => (
               <Card key={f.title} className="border-border/50 bg-card/50 p-6">
                 <f.icon className="h-8 w-8 text-accent" />
@@ -296,7 +298,7 @@ function Index() {
       <section className="border-t border-border/40 py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="font-display text-3xl font-bold md:text-4xl">Start earning today</h2>
-          <p className="mt-4 text-muted-foreground">Join thousands of users already cashing out weekly.</p>
+          <p className="mt-4 text-muted-foreground">Free to join. No credit card, no experience needed — start earning in under a minute.</p>
           <Link to="/auth">
             <Button size="lg" className="mt-8 bg-[image:var(--gradient-hero)] shadow-[var(--shadow-glow)]">
               Create your free account <ArrowRight className="ml-2 h-4 w-4" />
@@ -315,6 +317,7 @@ function Index() {
             <Link to="/about" className="hover:text-foreground">About</Link>
             <Link to="/terms" className="hover:text-foreground">Terms</Link>
             <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/advertisers" className="hover:text-foreground">Advertisers</Link>
             <a href="mailto:support@earnomni.com" className="hover:text-foreground">Contact</a>
           </div>
         </div>

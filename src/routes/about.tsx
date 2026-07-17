@@ -254,6 +254,7 @@ function AboutPage() {
             <Link to="/about" className="hover:text-foreground">About</Link>
             <a href="/terms" className="hover:text-foreground">Terms</a>
             <a href="/privacy" className="hover:text-foreground">Privacy</a>
+            <Link to="/advertisers" className="hover:text-foreground">Advertisers</Link>
             <a href="mailto:support@earnomni.com" className="hover:text-foreground">Contact</a>
           </div>
         </div>
