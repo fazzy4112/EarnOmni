@@ -4,4 +4,53 @@ Disallow: /dashboard/
 Disallow: /admin/
 Disallow: /auth
 
+# AI crawlers — explicitly allowed for AI search and citation
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: CCBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /auth
+
 Sitemap: https://earnomni.com/sitemap.xml
