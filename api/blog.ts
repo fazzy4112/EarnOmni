@@ -177,7 +177,7 @@ export default async function handler(req: any, res: any) {
     const author = esc(post.author_name || "EarnOmni Team");
     const published = post.published_at || post.updated_at || new Date().toISOString();
     const modified = post.updated_at || published;
-    const ogImage = esc(post.og_image_url || `${SITE}/og-default.png`);
+    const ogImage = esc(post.og_image_url || `${SITE}/og-image.png`);
 
     const bodyHtml = await marked.parse(post.body || "", { gfm: true, breaks: false });
 
@@ -215,14 +215,15 @@ export default async function handler(req: any, res: any) {
       "@type": "BlogPosting",
       headline: post.title,
       description: post.meta_description || post.excerpt || "",
-      image: post.og_image_url || `${SITE}/og-default.png`,
+      image: post.og_image_url || `${SITE}/og-image.png`,
       datePublished: published,
       dateModified: modified,
-      author: { "@type": "Organization", name: author },
+      author: { "@type": "Organization", name: post.author_name || "EarnOmni Team", url: `${SITE}/about` },
       publisher: {
         "@type": "Organization",
         name: "EarnOmni",
-        logo: { "@type": "ImageObject", url: `${SITE}/logo.png` },
+        url: SITE,
+        logo: { "@type": "ImageObject", url: `${SITE}/logo-512.png` },
       },
       mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     })}</script>`;
