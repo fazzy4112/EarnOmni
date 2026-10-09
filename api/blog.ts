@@ -12,21 +12,23 @@ import { marked } from "marked";
 
 const SITE = "https://www.earnomni.com";
 
-// Created lazily inside the handler so a missing env var produces a clear,
-// logged error instead of crashing the module at load time.
+// Same public project URL + anon (publishable) key the SPA ships in
+// src/integrations/supabase/client.ts — keep the two in sync. The anon key is
+// public by design (it is in every visitor's JS bundle); reads are limited by
+// the public_read_published_drafts RLS policy. Vercel's VITE_SUPABASE_* env
+// vars are intentionally NOT used: the SPA never reads them and they held an
+// invalid value ("Invalid supabaseUrl" in production).
+const SUPABASE_URL = "https://foofdltskckbrmihisll.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvb2ZkbHRza2NrYnJtaWhpc2xsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MzMwNDQsImV4cCI6MjA5NjIwOTA0NH0.bMu7t3XZlvRwqZ1vHe5tFTgtOlwh1LB8vO1G2S3Wwes";
+
 let supabase: SupabaseClient | null = null;
 function getSupabase(): SupabaseClient {
-  if (supabase) return supabase;
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "[blog] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in this Vercel environment"
-    );
+  if (!supabase) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
-  supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   return supabase;
 }
 
