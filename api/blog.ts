@@ -1,4 +1,4 @@
-// api/blog/[slug].ts
+// api/blog.ts  (served at /blog/:slug via vercel.json rewrite -> /api/blog?slug=:slug)
 // Server-rendered single blog article — dynamic (publish = instantly live)
 // AND fully crawlable by Google + AI bots. The SPA app is untouched.
 //
