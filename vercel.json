@@ -1,6 +1,16 @@
 {
   "rewrites": [
-    { "source": "/blog/:slug", "destination": "/api/blog?slug=:slug" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/blog",
+      "destination": "/api/blog"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/blog?slug=:slug"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
