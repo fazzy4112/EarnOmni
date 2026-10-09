@@ -13,7 +13,7 @@ const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "EarnOmni",
-  url: "https://earnomni.com",
+  url: "https://www.earnomni.com",
   description:
     "EarnOmni is a task-completion and ad-watching earning platform where users earn real USDT by completing simple online tasks.",
   foundingDate: "2026",
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/about")({
           "Learn about EarnOmni, a task-completion earning platform that pays real USDT for watching ads, completing tasks, and referring friends. Built by i5Digital Hub LLC.",
       },
     ],
-    links: [{ rel: "canonical", href: "https://earnomni.com/about" }],
+    links: [{ rel: "canonical", href: "https://www.earnomni.com/about" }],
   }),
   component: AboutPage,
 });

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/advertisers")({
       { title: "Advertise on EarnOmni — Reach an Engaged Rewarded Audience" },
       { name: "description", content: "Run ads and sponsor tasks directly on EarnOmni. No network middleman — set your own reward, reach users who opt in, and only pay for reviewed completions." },
     ],
-    links: [{ rel: "canonical", href: "https://earnomni.com/advertisers" }],
+    links: [{ rel: "canonical", href: "https://www.earnomni.com/advertisers" }],
   }),
   component: AdvertisersPage,
 });
