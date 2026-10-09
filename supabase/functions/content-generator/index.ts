@@ -42,10 +42,57 @@ interface SeoKeywordRow {
   priority: number | null;
 }
 
+interface FaqItem {
+  q: string;
+  a: string;
+}
+
 interface GeneratedArticle {
   title: string;
   meta_description: string;
+  excerpt: string;
   body_markdown: string;
+  faq: FaqItem[];
+}
+
+const MAX_EXCERPT_LENGTH = 220;
+const MAX_FAQ_ITEMS = 6;
+const MAX_SLUG_LENGTH = 80;
+
+// "Best GPT Sites in 2026: Why EarnOmni Stands Out!" -> "best-gpt-sites-in-2026-why-earnomni-stands-out"
+function slugify(text: string): string {
+  const slug = text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/-+$/g, "");
+  return slug || "article";
+}
+
+// content_drafts.slug is UNIQUE: pick base, base-2, base-3, ... whichever is free.
+// deno-lint-ignore no-explicit-any
+async function uniqueSlug(supabase: any, base: string): Promise<string> {
+  const { data, error } = await supabase.from("content_drafts").select("slug").like("slug", `${base}%`);
+  if (error) throw new Error(`Failed to check existing slugs: ${error.message}`);
+  const taken = new Set((data ?? []).map((row: { slug: string | null }) => row.slug));
+  if (!taken.has(base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base}-${i}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+}
+
+function clip(text: string, max: number): string {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim()}…`;
 }
 
 function countWords(text: string): number {
@@ -102,6 +149,9 @@ For any other EarnOmni feature you mention (watching ads, completing tasks, \
 withdrawals, etc.) that isn't covered by PLATFORM_FACTS above, you may describe \
 it at a reasonably general level, as you would for any GPT platform.
 
+The current year is ${new Date().getUTCFullYear()}. Never put a past year in the \
+title or body; only mention a year if it adds real value, and then use the current year.
+
 Write an SEO-optimized blog article targeting the keyword: "${keyword.keyword}"
 ${keyword.intent ? `Search intent: ${keyword.intent}` : ""}
 
@@ -115,14 +165,22 @@ inviting the reader to try EarnOmni.
 - Length: 800-1200 words in the body.
 - The article must be genuinely relevant and useful, tied back to EarnOmni's \
 ad-watching, task-completion, and referral earning model where appropriate.
-- Body must be formatted as markdown, using "## " for H2 headings.
+- Body must be formatted as markdown, using "## " for H2 headings. Do not repeat the \
+title as an H1 at the top of the body.
+- excerpt: 1-2 plain-text sentences (under 200 characters) summarizing what the \
+reader will learn, for the blog index page. No markdown.
+- faq: 3-5 questions real readers would ask about this topic, each with a concise, \
+factual 1-3 sentence plain-text answer. Answers about the Lucky Draw or referral \
+commission must follow PLATFORM_FACTS exactly. Do not promise specific earnings.
 
 Respond with ONLY a single valid JSON object and nothing else - no markdown code \
 fences, no commentary before or after. The JSON object must have exactly these keys:
 {
   "title": "string",
   "meta_description": "string",
-  "body_markdown": "string"
+  "excerpt": "string",
+  "body_markdown": "string",
+  "faq": [{ "q": "string", "a": "string" }]
 }`;
 }
 
@@ -177,11 +235,26 @@ async function generateArticle(anthropic: Anthropic, keyword: SeoKeywordRow): Pr
     throw new Error("Claude's response JSON is missing required fields");
   }
 
-  const article = parsed as GeneratedArticle;
+  const raw = parsed as Record<string, unknown>;
+  const meta = (raw.meta_description as string).trim();
+  const excerpt = typeof raw.excerpt === "string" && raw.excerpt.trim() ? raw.excerpt.trim() : meta;
+  // FAQ is optional: keep only well-formed items, never fail the article over it.
+  const faq: FaqItem[] = Array.isArray(raw.faq)
+    ? (raw.faq as unknown[])
+      .filter((f): f is FaqItem =>
+        typeof f === "object" && f !== null &&
+        typeof (f as FaqItem).q === "string" && (f as FaqItem).q.trim() !== "" &&
+        typeof (f as FaqItem).a === "string" && (f as FaqItem).a.trim() !== ""
+      )
+      .slice(0, MAX_FAQ_ITEMS)
+      .map((f) => ({ q: f.q.trim(), a: f.a.trim() }))
+    : [];
   return {
-    title: article.title.trim(),
-    meta_description: article.meta_description.trim(),
-    body_markdown: article.body_markdown.trim(),
+    title: (raw.title as string).trim(),
+    meta_description: meta,
+    excerpt: clip(excerpt, MAX_EXCERPT_LENGTH),
+    body_markdown: (raw.body_markdown as string).trim(),
+    faq,
   };
 }
 
@@ -284,7 +357,7 @@ Deno.serve(async (req) => {
     const { data: keywords, error: keywordsError } = await keywordQuery;
     if (keywordsError) throw new Error(`Failed to load seo_keywords: ${keywordsError.message}`);
 
-    const results: Array<{ keyword: string; title: string; seo_score: number; word_count: number }> = [];
+    const results: Array<{ keyword: string; title: string; slug: string; seo_score: number; word_count: number }> = [];
     const failures: Array<{ keyword: string; error: string }> = [];
 
     for (const keyword of (keywords ?? []) as SeoKeywordRow[]) {
@@ -292,8 +365,14 @@ Deno.serve(async (req) => {
         const article = await generateArticle(anthropic, keyword);
         const { score, wordCount } = computeSeoScore(article, keyword.keyword);
 
+        const slug = await uniqueSlug(supabase, slugify(article.title));
+
         const { error: insertError } = await supabase.from("content_drafts").insert({
           title: article.title,
+          slug,
+          meta_description: clip(article.meta_description, MAX_META_DESCRIPTION_LENGTH),
+          excerpt: article.excerpt,
+          faq: article.faq.length > 0 ? article.faq : null,
           target_keyword_id: keyword.id,
           body: article.body_markdown,
           seo_score: score,
@@ -301,7 +380,7 @@ Deno.serve(async (req) => {
         });
         if (insertError) throw new Error(`Failed to save content draft: ${insertError.message}`);
 
-        results.push({ keyword: keyword.keyword, title: article.title, seo_score: score, word_count: wordCount });
+        results.push({ keyword: keyword.keyword, title: article.title, slug, seo_score: score, word_count: wordCount });
       } catch (error) {
         console.error(`content-generator failed for keyword "${keyword.keyword}":`, error);
         failures.push({
