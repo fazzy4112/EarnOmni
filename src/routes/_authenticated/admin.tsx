@@ -150,6 +150,8 @@ function AdminPanel() {
   const [seoKeywords, setSeoKeywords] = useState<any[]>([]);
   const [seoAudits, setSeoAudits] = useState<any[]>([]);
   const [contentDraftsPending, setContentDraftsPending] = useState<any[]>([]);
+  const [contentDraftsPublished, setContentDraftsPublished] = useState<any[]>([]);
+  const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
   const [adBriefsPending, setAdBriefsPending] = useState<any[]>([]);
   const [sendingSummary, setSendingSummary] = useState(false);
   const [summaryResult, setSummaryResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -187,7 +189,7 @@ function AdminPanel() {
 
   const loadAll = async () => {
     setBusy(true);
-    const [u, w, a, p, s, st, tc, t, gr, dep, sup, sk, sa, cd, ab] = await Promise.all([
+    const [u, w, a, p, s, st, tc, t, gr, dep, sup, sk, sa, cd, ab, cdp] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("withdrawals").select("*, profiles(full_name, email)").order("created_at", { ascending: false }),
       supabase.from("ads").select("*").order("created_at", { ascending: false }),
@@ -201,8 +203,9 @@ function AdminPanel() {
       supabase.from("support_tickets").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
       supabase.from("seo_keywords").select("*").order("priority", { ascending: false }).limit(5),
       supabase.from("seo_audits").select("*").order("created_at", { ascending: false }),
-      supabase.from("content_drafts").select("*, seo_keywords(keyword)").eq("status", "draft").order("created_at", { ascending: false }),
+      supabase.from("content_drafts").select("*, seo_keywords(keyword)").in("status", ["draft", "approved"]).order("created_at", { ascending: false }),
       supabase.from("ad_campaign_briefs").select("*, seo_keywords(keyword)").eq("status", "draft").order("created_at", { ascending: false }),
+      supabase.from("content_drafts").select("id, title, slug, published_at").eq("status", "published").order("published_at", { ascending: false, nullsFirst: false }),
     ]);
     setSupportTickets(sup.data ?? []);
     setUsers(u.data ?? []);
@@ -216,6 +219,7 @@ function AdminPanel() {
     setSeoKeywords(sk.data ?? []);
     setSeoAudits(sa.data ?? []);
     setContentDraftsPending(cd.data ?? []);
+    setContentDraftsPublished(cdp.data ?? []);
     setAdBriefsPending(ab.data ?? []);
     const tcRaw = tc.data ?? [];
 const tcEnriched = await Promise.all(
@@ -563,6 +567,55 @@ setTaskCompletions(tcEnriched);
     const { error } = await supabase.from("content_drafts").update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success(`Content draft ${status}!`);
+    loadAll();
+  };
+
+  // Same rules as the content-generator Edge Function's slugify().
+  const slugifyTitle = (text: string) =>
+    (text
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80)
+      .replace(/-+$/g, "")) || "article";
+
+  const publishContentDraft = async (draft: any) => {
+    setPublishingDraftId(draft.id);
+    try {
+      let slug: string = draft.slug;
+      if (!slug) {
+        // content_drafts.slug is UNIQUE — pick base, base-2, base-3, ...
+        const base = slugifyTitle(draft.title ?? "");
+        const { data: existing, error: slugErr } = await supabase.from("content_drafts").select("slug").like("slug", `${base}%`);
+        if (slugErr) { toast.error(slugErr.message); return; }
+        const taken = new Set((existing ?? []).map((r: any) => r.slug));
+        slug = base;
+        for (let i = 2; taken.has(slug); i++) slug = `${base}-${i}`;
+      }
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("content_drafts")
+        .update({ status: "published", slug, published_at: draft.published_at ?? now, updated_at: now })
+        .eq("id", draft.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success(`Published! Live at /blog/${slug} (may take up to 5 min to appear)`);
+      loadAll();
+    } finally {
+      setPublishingDraftId(null);
+    }
+  };
+
+  const unpublishContentDraft = async (id: string) => {
+    if (!window.confirm("Take this article off the blog? It moves back to the review list.")) return;
+    const { error } = await supabase
+      .from("content_drafts")
+      .update({ status: "approved", updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Article unpublished.");
     loadAll();
   };
 
@@ -1717,8 +1770,8 @@ setTaskCompletions(tcEnriched);
           {/* Content Drafts */}
           <Card className="overflow-hidden border-border/50 bg-card/80">
             <div className="p-4 border-b border-border/40">
-              <h3 className="font-semibold">Content Drafts — Awaiting Approval</h3>
-              <p className="text-xs text-muted-foreground">{contentDraftsPending.length} draft(s) pending review</p>
+              <h3 className="font-semibold">Content Drafts — Review &amp; Publish</h3>
+              <p className="text-xs text-muted-foreground">{contentDraftsPending.length} draft(s) not yet live · Publish puts an article on /blog</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1728,7 +1781,7 @@ setTaskCompletions(tcEnriched);
                     <th className="p-3">Keyword</th>
                     <th className="p-3">SEO Score</th>
                     <th className="p-3">Words</th>
-                    <th className="p-3">Created</th>
+                    <th className="p-3">Status</th>
                     <th className="p-3">Actions</th>
                   </tr>
                 </thead>
@@ -1747,11 +1800,11 @@ setTaskCompletions(tcEnriched);
                       <td className="p-3 text-xs text-muted-foreground">{d.seo_keywords?.keyword ?? "—"}</td>
                       <td className="p-3"><Badge variant={(d.seo_score ?? 0) >= 70 ? "default" : "secondary"}>{d.seo_score ?? 0}/100</Badge></td>
                       <td className="p-3">{countWords(d.body)}</td>
-                      <td className="p-3 text-xs">{new Date(d.created_at).toLocaleDateString()}</td>
+                      <td className="p-3"><Badge variant={d.status === "approved" ? "default" : "secondary"}>{d.status}</Badge></td>
                       <td className="p-3">
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-emerald-500" onClick={() => updateContentDraftStatus(d.id, "approved")}>
-                            <Check className="h-3.5 w-3.5 mr-1" /> Approve for Publishing
+                          <Button size="sm" className="bg-emerald-500" disabled={publishingDraftId === d.id} onClick={() => publishContentDraft(d)}>
+                            {publishingDraftId === d.id ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1" />} Publish
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => updateContentDraftStatus(d.id, "rejected")}>
                             <X className="h-3.5 w-3.5 mr-1" /> Reject
@@ -1762,6 +1815,50 @@ setTaskCompletions(tcEnriched);
                   ))}
                   {contentDraftsPending.length === 0 && (
                     <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No drafts pending approval</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Published articles */}
+          <Card className="overflow-hidden border-border/50 bg-card/80">
+            <div className="p-4 border-b border-border/40">
+              <h3 className="font-semibold">Published Articles</h3>
+              <p className="text-xs text-muted-foreground">{contentDraftsPublished.length} live on /blog</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="p-3">Title</th>
+                    <th className="p-3">URL</th>
+                    <th className="p-3">Published</th>
+                    <th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contentDraftsPublished.map((d) => (
+                    <tr key={d.id} className="border-t border-border/40 hover:bg-muted/20">
+                      <td className="p-3 font-medium max-w-xs truncate">{d.title}</td>
+                      <td className="p-3 text-xs text-muted-foreground">/blog/{d.slug}</td>
+                      <td className="p-3 text-xs">{d.published_at ? new Date(d.published_at).toLocaleDateString() : "—"}</td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={`/blog/${d.slug}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" /> View
+                            </a>
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => unpublishContentDraft(d.id)}>
+                            <X className="h-3.5 w-3.5 mr-1" /> Unpublish
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {contentDraftsPublished.length === 0 && (
+                    <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No published articles yet</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1922,6 +2019,13 @@ setTaskCompletions(tcEnriched);
                       </Badge>
                       <Badge variant="outline">{countWords(selectedDraft.body)} words</Badge>
                       <Badge variant="outline">Created {new Date(selectedDraft.created_at).toLocaleDateString()}</Badge>
+                      <Badge variant="outline">Status: {selectedDraft.status}</Badge>
+                    </div>
+                    <div className="space-y-1 rounded-lg border border-border/50 p-3 text-sm">
+                      <p><span className="text-muted-foreground">URL:</span> /blog/{selectedDraft.slug ?? <em>(generated on publish)</em>}</p>
+                      <p><span className="text-muted-foreground">Meta description:</span> {selectedDraft.meta_description || <em className="text-amber-400">missing</em>}</p>
+                      <p><span className="text-muted-foreground">Excerpt:</span> {selectedDraft.excerpt || <em className="text-amber-400">missing</em>}</p>
+                      <p><span className="text-muted-foreground">FAQ items:</span> {Array.isArray(selectedDraft.faq) ? selectedDraft.faq.length : 0}</p>
                     </div>
                     <div className="max-h-96 overflow-y-auto rounded-lg border border-border/50 bg-muted/20 p-4">
                       <p className="whitespace-pre-wrap text-sm">{selectedDraft.body}</p>
@@ -1936,9 +2040,10 @@ setTaskCompletions(tcEnriched);
                     </Button>
                     <Button
                       className="bg-emerald-500 hover:bg-emerald-600"
-                      onClick={() => { updateContentDraftStatus(selectedDraft.id, "approved"); setSelectedDraft(null); }}
+                      disabled={publishingDraftId === selectedDraft.id}
+                      onClick={async () => { await publishContentDraft(selectedDraft); setSelectedDraft(null); }}
                     >
-                      <Check className="h-3.5 w-3.5 mr-1" /> Approve for Publishing
+                      <Rocket className="h-3.5 w-3.5 mr-1" /> Publish to Blog
                     </Button>
                   </DialogFooter>
                 </>
