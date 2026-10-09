@@ -1,4 +1,4 @@
-// api/blog.ts  (served at /blog/:slug via vercel.json rewrite -> /api/blog?slug=:slug)
+// api/blog.ts  (/blog -> index, /blog/:slug -> article; see vercel.json rewrites)
 // Server-rendered single blog article — dynamic (publish = instantly live)
 // AND fully crawlable by Google + AI bots. The SPA app is untouched.
 //
@@ -113,6 +113,23 @@ const THEME_CSS = `
   .foot{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;
     justify-content:space-between;flex-wrap:wrap;gap:16px}
   .foot-links{display:flex;gap:20px;flex-wrap:wrap}
+  @media (max-width:560px){
+    .nav,.foot{padding:0 16px} .wrap,main.wrap{padding-left:16px;padding-right:16px}
+    .nav-links{gap:16px;font-size:13px}
+    .nav-links a:nth-child(2),.nav-links a:nth-child(3){display:none}
+    .cta{padding:24px 18px}
+  }
+  .lede{color:var(--muted-foreground);font-size:18px;margin-bottom:40px;max-width:620px}
+  .posts{list-style:none;margin:0;padding:0;display:grid;gap:16px}
+  .post{border:1px solid color-mix(in oklch,var(--border) 40%,transparent);border-radius:16px;
+    background:var(--gradient-card);transition:border-color .15s,transform .15s}
+  .post:hover{border-color:var(--primary);transform:translateY(-1px)}
+  .post a{display:block;padding:24px;color:inherit;text-decoration:none}
+  .post-date{color:var(--muted-foreground);font-size:13px;margin-bottom:8px}
+  .post h2{font-size:21px;font-weight:700;line-height:1.3;margin:0 0 8px;letter-spacing:-.01em}
+  .post p{color:var(--muted-foreground);font-size:15px;margin:0}
+  .post-more{display:inline-block;margin-top:14px;color:var(--primary);font-size:14px;font-weight:600}
+  .empty{color:var(--muted-foreground);padding:40px 0}
   .back{display:inline-block;margin-bottom:32px;font-size:14px;
     color:var(--muted-foreground)}
 `;
@@ -157,10 +174,112 @@ function notFound(res: any) {
     ${siteFooter()}</body></html>`);
 }
 
+const INDEX_TITLE = "EarnOmni Blog — Guides to Earning USDT Online";
+const INDEX_DESC =
+  "Practical guides on earning USDT online: watching ads, completing tasks, referrals, withdrawals and avoiding scams.";
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+async function renderIndex(res: any) {
+  const { data, error } = await getSupabase()
+    .from("content_drafts")
+    .select("title, slug, excerpt, meta_description, published_at, updated_at")
+    .eq("status", "published")
+    .not("slug", "is", null)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(200);
+  if (error) throw new Error(`[blog] index query failed: ${error.message}`);
+  const posts = (data || []).filter((p: any) => p.slug && p.title);
+  const canonical = `${SITE}/blog`;
+
+  const items = posts
+    .map((p: any) => {
+      const date = p.published_at || p.updated_at;
+      const blurb = p.excerpt || p.meta_description || "";
+      return `<li class="post"><a href="${SITE}/blog/${esc(p.slug)}">
+        ${date ? `<div class="post-date"><time datetime="${esc(date)}">${fmtDate(date)}</time></div>` : ""}
+        <h2>${esc(p.title)}</h2>
+        ${blurb ? `<p>${esc(blurb)}</p>` : ""}
+        <span class="post-more">Read article &rarr;</span></a></li>`;
+    })
+    .join("\n");
+
+  const blogSchema = `<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: "EarnOmni Blog",
+    description: INDEX_DESC,
+    url: canonical,
+    publisher: { "@type": "Organization", name: "EarnOmni", url: SITE,
+      logo: { "@type": "ImageObject", url: `${SITE}/logo-512.png` } },
+    blogPost: posts.slice(0, 50).map((p: any) => ({
+      "@type": "BlogPosting",
+      headline: p.title,
+      url: `${SITE}/blog/${p.slug}`,
+      ...(p.published_at ? { datePublished: p.published_at } : {}),
+    })),
+  }).replace(/</g, "\\u003c")}</script>`;
+
+  const breadcrumbSchema = `<script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE },
+      { "@type": "ListItem", position: 2, name: "Blog", item: canonical },
+    ],
+  })}</script>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
+  res.status(200).send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(INDEX_TITLE)}</title>
+<meta name="description" content="${esc(INDEX_DESC)}">
+<link rel="canonical" href="${canonical}">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(INDEX_TITLE)}">
+<meta property="og:description" content="${esc(INDEX_DESC)}">
+<meta property="og:url" content="${canonical}">
+<meta property="og:image" content="${SITE}/og-image.png">
+<meta property="og:site_name" content="EarnOmni">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(INDEX_TITLE)}">
+<meta name="twitter:description" content="${esc(INDEX_DESC)}">
+<meta name="twitter:image" content="${SITE}/og-image.png">
+<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>${THEME_CSS}</style>
+${blogSchema}
+${breadcrumbSchema}
+</head>
+<body>
+${siteHeader()}
+<main class="wrap">
+  <div class="kicker">EarnOmni Blog</div>
+  <h1>Guides to earning USDT online</h1>
+  <p class="lede">${esc(INDEX_DESC)}</p>
+  ${posts.length ? `<ul class="posts">${items}</ul>` : `<p class="empty">No articles published yet — check back soon.</p>`}
+  <div class="cta">
+    <h3>Start earning real USDT</h3>
+    <p>Watch ads, complete tasks, and withdraw from $10. Free to join.</p>
+    <a class="btn" href="${SITE}/auth">Create your free account</a>
+  </div>
+</main>
+${siteFooter()}
+</body></html>`);
+}
+
 export default async function handler(req: any, res: any) {
   try {
     const slug = String(req.query.slug || "").trim();
-    if (!slug) return notFound(res);
+    if (!slug) return await renderIndex(res);
 
     const { data: post, error } = await getSupabase()
       .from("content_drafts")
@@ -271,6 +390,7 @@ export default async function handler(req: any, res: any) {
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="${metaDesc}">
 <meta name="twitter:image" content="${ogImage}">
+<link rel="icon" href="${SITE}/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
