@@ -154,6 +154,9 @@ function AdminPanel() {
   const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
   const [adBriefsPending, setAdBriefsPending] = useState<any[]>([]);
   const [sendingSummary, setSendingSummary] = useState(false);
+  const [newKeyword, setNewKeyword] = useState({ keyword: "", intent: "informational", priority: "80" });
+  const [savingKeyword, setSavingKeyword] = useState(false);
+  const [generatingArticle, setGeneratingArticle] = useState(false);
   const [summaryResult, setSummaryResult] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedAudit, setSelectedAudit] = useState<any | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any | null>(null);
@@ -201,7 +204,7 @@ function AdminPanel() {
       supabase.from("game_rounds").select("*").order("created_at", { ascending: false }),
       supabase.from("deposits").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
       supabase.from("support_tickets").select("*, profiles(full_name, email, user_number)").order("created_at", { ascending: false }),
-      supabase.from("seo_keywords").select("*").order("priority", { ascending: false }).limit(5),
+      supabase.from("seo_keywords").select("*, content_drafts(id)").order("priority", { ascending: false }).limit(20),
       supabase.from("seo_audits").select("*").order("created_at", { ascending: false }),
       supabase.from("content_drafts").select("*, seo_keywords(keyword)").in("status", ["draft", "approved"]).order("created_at", { ascending: false }),
       supabase.from("ad_campaign_briefs").select("*, seo_keywords(keyword)").eq("status", "draft").order("created_at", { ascending: false }),
@@ -624,6 +627,56 @@ setTaskCompletions(tcEnriched);
     if (error) { toast.error(error.message); return; }
     toast.success(`Ad campaign brief ${status}!`);
     loadAll();
+  };
+
+  // Supabase functions.invoke hides the JSON error body; dig it out for a useful toast.
+  const invokeErrorMessage = async (error: any) => {
+    try {
+      const body = await error?.context?.json?.();
+      if (body?.error) return String(body.error);
+    } catch {
+      // fall through
+    }
+    return error?.message || "Request failed";
+  };
+
+  const addSeoKeyword = async () => {
+    const keyword = newKeyword.keyword.trim().toLowerCase().replace(/\s+/g, " ");
+    const priority = Math.max(0, Math.min(100, Math.round(Number(newKeyword.priority) || 0)));
+    if (keyword.length < 3) { toast.error("Enter a keyword (at least 3 characters)."); return; }
+    setSavingKeyword(true);
+    const { error } = await supabase
+      .from("seo_keywords")
+      .insert({ keyword, intent: newKeyword.intent, priority, target_country: "US" });
+    setSavingKeyword(false);
+    if (error) {
+      toast.error(error.code === "23505" ? "That keyword already exists." : error.message);
+      return;
+    }
+    toast.success(`Keyword added: "${keyword}"`);
+    setNewKeyword({ keyword: "", intent: newKeyword.intent, priority: newKeyword.priority });
+    loadAll();
+  };
+
+  const generateOneArticle = async () => {
+    setGeneratingArticle(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("content-generator", { body: { limit: 1 } });
+      if (error) throw new Error(await invokeErrorMessage(error));
+      if (data?.draftsGenerated > 0) {
+        const r = data.results?.[0];
+        toast.success(`Draft written for "${r?.keyword}" — review it under Content Drafts.`);
+      } else if (data?.draftsFailed > 0) {
+        toast.error(`Generation failed: ${data.failures?.[0]?.error ?? "unknown error"}`);
+      } else {
+        toast.info("Every keyword already has an article. Add a new keyword first.");
+      }
+      loadAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Article generation failed.");
+    } finally {
+      setGeneratingArticle(false);
+    }
   };
 
   const sendWeeklySummary = async () => {
@@ -1668,8 +1721,53 @@ setTaskCompletions(tcEnriched);
           {/* Research Engine */}
           <Card className="overflow-hidden border-border/50 bg-card/80">
             <div className="p-4 border-b border-border/40">
-              <h3 className="font-semibold">Research Engine — Top Keywords</h3>
-              <p className="text-xs text-muted-foreground">Top 5 keywords by priority</p>
+              <h3 className="font-semibold">Research Engine — Keywords</h3>
+              <p className="text-xs text-muted-foreground">
+                Highest priority first. "Generate article" writes one draft for the top keyword that has no article yet (takes ~1 minute).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3 border-b border-border/40 p-4">
+              <div className="min-w-[220px] flex-1 space-y-1">
+                <Label htmlFor="new-keyword" className="text-xs">New keyword</Label>
+                <Input
+                  id="new-keyword"
+                  placeholder="e.g. is earnomni legit"
+                  value={newKeyword.keyword}
+                  onChange={(e) => setNewKeyword({ ...newKeyword, keyword: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") addSeoKeyword(); }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="new-keyword-intent" className="text-xs">Intent</Label>
+                <select
+                  id="new-keyword-intent"
+                  value={newKeyword.intent}
+                  onChange={(e) => setNewKeyword({ ...newKeyword, intent: e.target.value })}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="informational">Informational</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="navigational">Navigational</option>
+                </select>
+              </div>
+              <div className="w-24 space-y-1">
+                <Label htmlFor="new-keyword-priority" className="text-xs">Priority (0-100)</Label>
+                <Input
+                  id="new-keyword-priority"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={newKeyword.priority}
+                  onChange={(e) => setNewKeyword({ ...newKeyword, priority: e.target.value })}
+                />
+              </div>
+              <Button onClick={addSeoKeyword} disabled={savingKeyword} variant="outline">
+                {savingKeyword ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />} Add keyword
+              </Button>
+              <Button onClick={generateOneArticle} disabled={generatingArticle} className="bg-emerald-500 hover:bg-emerald-600">
+                {generatingArticle ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
+                {generatingArticle ? "Writing article…" : "Generate article"}
+              </Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1680,6 +1778,7 @@ setTaskCompletions(tcEnriched);
                     <th className="p-3">Search Volume</th>
                     <th className="p-3">Intent</th>
                     <th className="p-3">Country</th>
+                    <th className="p-3">Article</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1690,10 +1789,15 @@ setTaskCompletions(tcEnriched);
                       <td className="p-3">{k.search_volume ?? "—"}</td>
                       <td className="p-3">{k.intent ? <Badge variant="outline" className="capitalize">{k.intent}</Badge> : "—"}</td>
                       <td className="p-3 text-xs text-muted-foreground">{k.target_country ?? "—"}</td>
+                      <td className="p-3">
+                        {(k.content_drafts?.length ?? 0) > 0
+                          ? <Badge variant="default">Written</Badge>
+                          : <Badge variant="secondary">Not yet</Badge>}
+                      </td>
                     </tr>
                   ))}
                   {seoKeywords.length === 0 && (
-                    <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No keywords researched yet</td></tr>
+                    <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No keywords yet — add one above</td></tr>
                   )}
                 </tbody>
               </table>
